@@ -107,9 +107,15 @@ const getExpenseList = async (req: any, res: Response) => {
 
         const [new_expense_data]: any = await pool.query(expense_list_data, queryParams);
 
-        if(new_expense_data.length === 0){
-        res.status(200).json({ ...response, response_code: 200, data: [], message: MESSAGE.NO_DATA_FOUND });
-        }
+        if (new_expense_data.length === 0) {
+            return res.status(200).json({ 
+              ...response, 
+              response_code: 200, 
+              data: [], 
+              message: MESSAGE.NO_DATA_FOUND 
+            });
+          }
+          
 
         const expense_catagories = `SELECT * FROM expense_categories `;
         const [catagories]: any = await pool.query(expense_catagories);
