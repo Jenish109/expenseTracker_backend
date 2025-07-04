@@ -1,0 +1,284 @@
+{
+	"info": {
+		"_postman_id": "e5f3b0a0-0b0a-4b0b-8b0b-0b0b0b0b0b0b",
+		"name": "Expense Tracker API",
+		"description": "API collection for the Expense Tracker application",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Register a new user"
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login with existing credentials"
+					}
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Add Monthly Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monthly_budget\": 5000,\n    \"monthly_income\": 8000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/addMonthlyData",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "addMonthlyData"]
+						},
+						"description": "Add or update user's monthly budget and income"
+					}
+				},
+				{
+					"name": "Get Dashboard Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/getDashboardData",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "getDashboardData"]
+						},
+						"description": "Get user's dashboard data including expenses, budgets, and analytics"
+					}
+				}
+			]
+		},
+		{
+			"name": "Expenses",
+			"item": [
+				{
+					"name": "Get All Expenses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expense",
+							"host": ["{{base_url}}"],
+							"path": ["api", "expense"]
+						},
+						"description": "Get all expenses for the authenticated user"
+					}
+				},
+				{
+					"name": "Get Expense by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expense/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "expense", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the expense"
+								}
+							]
+						},
+						"description": "Get a specific expense by ID"
+					}
+				},
+				{
+					"name": "Create Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category_id\": 1,\n    \"amount\": 100,\n    \"expense_name\": \"Grocery shopping\",\n    \"expense_date\": \"2024-01-01\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense",
+							"host": ["{{base_url}}"],
+							"path": ["api", "expense"]
+						},
+						"description": "Create a new expense"
+					}
+				},
+				{
+					"name": "Delete Expense",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/expense/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "expense", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the expense to delete"
+								}
+							]
+						},
+						"description": "Delete an expense"
+					}
+				}
+			]
+		},
+		{
+			"name": "Budget",
+			"item": [
+				{
+					"name": "Add/Edit Budget",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"category_id\": 1,\n    \"amount\": 1000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/budget/addEditBudgetData",
+							"host": ["{{base_url}}"],
+							"path": ["api", "budget", "addEditBudgetData"]
+						},
+						"description": "Add or update budget for a category"
+					}
+				},
+				{
+					"name": "Get Budget List",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/budget/getBudgetList",
+							"host": ["{{base_url}}"],
+							"path": ["api", "budget", "getBudgetList"]
+						},
+						"description": "Get all budgets with spending information"
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		}
+	]
+} 
