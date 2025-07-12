@@ -114,19 +114,12 @@ export class ExpenseController {
                 throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
             }
 
-            if (!req.body.amount || isNaN(req.body.amount)) {
-                throw new CustomError(ERROR_CODES.EXPENSE.INVALID_AMOUNT, ["Invalid expense amount"]);
-            }
-
-            if (!req.body.category_id || isNaN(req.body.category_id)) {
-                throw new CustomError(ERROR_CODES.EXPENSE.INVALID_CATEGORY, ["Invalid expense category"]);
-            }
-
             const expenseData: CreateExpenseDTO = {
-                category_id: req.body.category_id,
-                amount: req.body.amount,
-                description: req.body.description,
-                expense_date: req.body.expense_date ? new Date(req.body.expense_date) : undefined
+                category_id: parseInt(req.body.category_id),
+                amount: parseFloat(req.body.amount),
+                expense_name: req.body.expense_name.trim(),
+                description: req.body.description.trim(),
+                expense_date: req.body.expense_date ? new Date(req.body.expense_date) : new Date()
             };
 
             const expense = await this.expenseService.createExpense(userId, expenseData);
@@ -166,6 +159,7 @@ export class ExpenseController {
             const updateData: UpdateExpenseDTO = {
                 category_id: req.body.category_id,
                 amount: req.body.amount,
+                expense_name: req.body.expense_name,
                 description: req.body.description,
                 expense_date: req.body.expense_date ? new Date(req.body.expense_date) : undefined
             };

@@ -17,7 +17,8 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             where: { user_id: userId } as WhereOptions<ExpenseModel>,
             include: [{
                 model: CategoryModel,
-                as: 'category'
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }],
             order: [['expense_date', 'DESC']] as Order,
             offset: (page - 1) * limit,
@@ -43,7 +44,8 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             where: { user_id: userId } as WhereOptions<ExpenseModel>,
             include: [{
                 model: CategoryModel,
-                as: 'category'
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }],
             order: [['expense_date', 'DESC']] as Order
         };
@@ -62,6 +64,19 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
     }
 
     /**
+     * Get total expenses by category for a user
+     */
+    async getTotalExpensesByCategory(userId: number, categoryId: number): Promise<number> {
+        const result = await ExpenseModel.sum('amount', {
+            where: {
+                user_id: userId,
+                category_id: categoryId
+            } as WhereOptions<ExpenseModel>
+        });
+        return Number(result) || 0;
+    }
+
+    /**
      * Get expenses by category for a user
      */
     async getExpensesByCategory(userId: number, categoryId: number) {
@@ -72,7 +87,8 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             } as WhereOptions<ExpenseModel>,
             include: [{
                 model: CategoryModel,
-                as: 'category'
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }],
             order: [['expense_date', 'DESC']] as Order
         };
@@ -91,7 +107,8 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             } as WhereOptions<ExpenseModel>,
             include: [{
                 model: CategoryModel,
-                as: 'category'
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }]
         };
 
@@ -105,6 +122,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
         return ExpenseModel.create({
             user_id: data.user_id,
             category_id: data.category_id,
+            expense_name: data.expense_name,
             description: data.description,
             amount: data.amount,
             expense_date: data.expense_date || new Date()
@@ -190,7 +208,8 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             include: [{
                 model: CategoryModel,
                 as: 'category',
-                required: true
+                required: true,
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }],
             attributes: [
                 'category_id',

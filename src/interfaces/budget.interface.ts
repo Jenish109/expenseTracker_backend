@@ -20,6 +20,7 @@ export interface CreateBudgetDTO {
 
 export interface UpdateBudgetDTO {
     amount: number;
+    categoryId?: number;
     startDate: string;
     endDate: string;
 }

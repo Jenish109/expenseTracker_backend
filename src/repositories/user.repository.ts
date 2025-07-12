@@ -48,14 +48,4 @@ export class UserRepository extends BaseRepository<User> {
             { where: { user_id: userId } }
         );
     }
-
-    /**
-     * Update user's token
-     */
-    async updateToken(userId: number, token: string): Promise<number> {
-        return this.update(
-            { token },
-            { where: { user_id: userId } }
-        );
-    }
 } 

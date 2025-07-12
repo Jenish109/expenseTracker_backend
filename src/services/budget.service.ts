@@ -1,4 +1,3 @@
-import { ValidationService } from "./validation.service";
 import { CustomError } from "../utils/customError";
 import { ERROR_CODES } from "../constants/errorCodes";
 import type { CreateBudgetDTO, UpdateBudgetDTO, BudgetWithCategory } from "../interfaces/budget.interface";
@@ -28,7 +27,9 @@ export class BudgetService {
      */
     async addBudget(userId: number, data: CreateBudgetDTO): Promise<void> {
         // Validate input
-        const validAmount = ValidationService.validateAmount(data.amount);
+        if (!data.amount || data.amount <= 0) {
+            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Budget amount must be greater than 0"]);
+        }
 
         if (!data.categoryId) {
             throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category ID is required"]);
@@ -40,14 +41,20 @@ export class BudgetService {
             throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found"]);
         }
 
-        // Create new budget
+        // Validate and parse dates
         const startDate = data.startDate ? new Date(data.startDate) : new Date();
-        const endDate = data.endDate ? new Date(data.endDate) : new Date();
+        const endDate = data.endDate ? new Date(data.endDate) : new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 1); // Default to one month if no end date
+
+        if (startDate > endDate) {
+            throw new CustomError(ERROR_CODES.BUDGET.INVALID_PERIOD, ["Start date cannot be after end date"]);
+        }
         
+        // Create new budget
         await BudgetModel.create({
             user_id: userId,
             category_id: data.categoryId,
-            amount: validAmount,
+            amount: data.amount,
             start_date: startDate,
             end_date: endDate
         });
@@ -78,11 +85,38 @@ export class BudgetService {
         // Get total expense
         const total_expense = await this.expenseRepository.getTotalExpensesByUserId(userId);
 
+        // Transform budget data to avoid circular references
+        const transformedBudgets = await Promise.all(budgets.map(async (budget) => {
+            const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
+            const remaining = budget.amount - currentAmount;
+            const utilization = (currentAmount / budget.amount) * 100;
+
+            return {
+                budget_id: budget.budget_id,
+                user_id: budget.user_id,
+                category_id: budget.category_id,
+                amount: budget.amount,
+                start_date: budget.start_date,
+                end_date: budget.end_date,
+                created_at: budget.created_at,
+                updated_at: budget.updated_at,
+                category: {
+                    category_id: budget.category.category_id,
+                    category_name: budget.category.category_name,
+                    category_color: budget.category.category_color,
+                    created_at: budget.category.created_at
+                },
+                current_amount: currentAmount,
+                remaining_amount: remaining,
+                utilization_percentage: Math.min(Math.round(utilization * 100) / 100, 100)
+            };
+        }));
+
         return {
             total_budget: Number(user.monthly_budget) || 0,
             spent_amount: total_expense,
             remaining_amount: Number(user.monthly_budget) > total_expense ? Number(user.monthly_budget) - total_expense : 0,
-            budget_list: budgets
+            budget_list: transformedBudgets
         };
     }
 
@@ -104,9 +138,26 @@ export class BudgetService {
      * Update budget
      */
     async updateBudget(budgetId: number, userId: number, data: UpdateBudgetDTO) {
-        // Validate input
-        if (data.amount) {
-            data.amount = ValidationService.validateAmount(data.amount);
+        // Validate amount if provided
+        if (data.amount && data.amount <= 0) {
+            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Budget amount must be greater than 0"]);
+        }
+
+        // Validate category if provided
+        if (data.categoryId) {
+            const category = await this.categoryRepository.findById(data.categoryId);
+            if (!category) {
+                throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found"]);
+            }
+        }
+
+        // Validate dates
+        if (data.startDate && data.endDate) {
+            const startDate = new Date(data.startDate);
+            const endDate = new Date(data.endDate);
+            if (startDate > endDate) {
+                throw new CustomError(ERROR_CODES.BUDGET.INVALID_PERIOD, ["Start date cannot be after end date"]);
+            }
         }
 
         // Update budget
@@ -115,7 +166,7 @@ export class BudgetService {
             throw new CustomError(ERROR_CODES.BUDGET.NOT_FOUND, ["Budget not found"]);
         }
 
-        return budget;
+        return this.getBudgetById(budgetId, userId);
     }
 
     /**
@@ -143,6 +194,33 @@ export class BudgetService {
         if (!budget) {
             throw new CustomError(ERROR_CODES.BUDGET.NOT_FOUND, ["Budget not found"]);
         }
-        return budget;
+
+        // Get current spending for this budget's category
+        const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
+        
+        // Calculate remaining amount and utilization
+        const remaining = budget.amount - currentAmount;
+        const utilization = (currentAmount / budget.amount) * 100;
+
+        // Transform the data to avoid circular references
+        return {
+            budget_id: budget.budget_id,
+            user_id: budget.user_id,
+            category_id: budget.category_id,
+            amount: budget.amount,
+            start_date: budget.start_date,
+            end_date: budget.end_date,
+            created_at: budget.created_at,
+            updated_at: budget.updated_at,
+            category: {
+                category_id: budget.category.category_id,
+                category_name: budget.category.category_name,
+                category_color: budget.category.category_color,
+                created_at: budget.category.created_at
+            },
+            current_amount: currentAmount,
+            remaining_amount: remaining,
+            utilization_percentage: Math.min(Math.round(utilization * 100) / 100, 100)
+        };
     }
 }

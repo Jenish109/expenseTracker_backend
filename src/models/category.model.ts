@@ -1,4 +1,5 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
+import { sequelize } from './index';
 
 class Category extends Model {
   public category_id!: number;
@@ -8,39 +9,33 @@ class Category extends Model {
   public readonly updated_at!: Date;
 }
 
-export const initCategoryModel = (sequelize: Sequelize) => {
-  Category.init({
-    category_id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    category_name: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      unique: true,
-    },
-    category_color: {
-      type: DataTypes.STRING(7),
-      allowNull: false,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-  }, {
-    sequelize,
-    tableName: 'expense_categories',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-  });
-
-  return Category;
-};
+Category.init({
+  category_id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  category_name: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+  },
+  category_color: {
+    type: DataTypes.STRING(7),
+    allowNull: false,
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  sequelize,
+  tableName: 'categories',
+  timestamps: true,
+  underscored: true
+});
 
 export default Category; 

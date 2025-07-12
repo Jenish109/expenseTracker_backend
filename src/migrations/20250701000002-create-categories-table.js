@@ -7,27 +7,16 @@ module.exports = {
       category_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
       },
-      name: {
+      category_name: {
         type: Sequelize.STRING(50),
         allowNull: false
       },
-      description: {
-        type: Sequelize.STRING(255),
-        allowNull: true
-      },
-      icon: {
-        type: Sequelize.STRING(50),
-        allowNull: true
-      },
-      color: {
+      category_color: {
         type: Sequelize.STRING(7),
-        allowNull: true
-      },
-      is_default: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
+        allowNull: false
       },
       created_at: {
         type: Sequelize.DATE,
@@ -37,18 +26,8 @@ module.exports = {
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-        onUpdate: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
-    }, {
-      charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci',
-      indexes: [
-        {
-          name: 'idx_category_name',
-          fields: ['name']
-        }
-      ]
     });
   },
 

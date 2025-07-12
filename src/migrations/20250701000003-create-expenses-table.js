@@ -7,7 +7,8 @@ module.exports = {
       expense_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
       },
       user_id: {
         type: Sequelize.INTEGER,
@@ -27,10 +28,14 @@ module.exports = {
           key: 'category_id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
+        onDelete: 'CASCADE'
       },
       amount: {
         type: Sequelize.DECIMAL(10, 2),
+        allowNull: false
+      },
+      expense_name: {
+        type: Sequelize.STRING(100),
         allowNull: false
       },
       description: {
@@ -39,7 +44,8 @@ module.exports = {
       },
       expense_date: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       created_at: {
         type: Sequelize.DATE,
@@ -49,27 +55,14 @@ module.exports = {
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-        onUpdate: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
-    }, {
-      charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci',
-      indexes: [
-        {
-          name: 'idx_user_id',
-          fields: ['user_id']
-        },
-        {
-          name: 'idx_category_id',
-          fields: ['category_id']
-        },
-        {
-          name: 'idx_expense_date',
-          fields: ['expense_date']
-        }
-      ]
     });
+
+    // Add indexes for faster lookups
+    await queryInterface.addIndex('expenses', ['user_id']);
+    await queryInterface.addIndex('expenses', ['category_id']);
+    await queryInterface.addIndex('expenses', ['expense_date']);
   },
 
   async down(queryInterface, Sequelize) {

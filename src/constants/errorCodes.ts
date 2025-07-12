@@ -30,6 +30,16 @@ export const ERROR_CODES = {
       code: 'AUTH_005',
       message: 'Authentication token is missing',
       statusCode: 401
+    },
+    TOKEN_GENERATION_FAILED: {
+      code: 'AUTH_006',
+      message: 'Failed to generate authentication tokens',
+      statusCode: 500
+    },
+    LOGIN_FAILED: {
+      code: 'AUTH_007',
+      message: 'Login failed',
+      statusCode: 500
     }
   },
   USER: {
@@ -83,6 +93,11 @@ export const ERROR_CODES = {
     DATE_INVALID: {
       code: 'EXP_005',
       message: 'Invalid expense date',
+      statusCode: 400
+    },
+    INVALID_DATA: {
+      code: 'EXP_006',
+      message: 'Invalid expense data',
       statusCode: 400
     }
   },

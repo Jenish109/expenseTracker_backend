@@ -7,7 +7,8 @@ module.exports = {
       budget_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
       },
       user_id: {
         type: Sequelize.INTEGER,
@@ -27,7 +28,7 @@ module.exports = {
           key: 'category_id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
+        onDelete: 'CASCADE'
       },
       amount: {
         type: Sequelize.DECIMAL(10, 2),
@@ -41,10 +42,6 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false
       },
-      description: {
-        type: Sequelize.STRING(255),
-        allowNull: true
-      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -53,27 +50,14 @@ module.exports = {
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-        onUpdate: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
-    }, {
-      charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci',
-      indexes: [
-        {
-          name: 'idx_user_id',
-          fields: ['user_id']
-        },
-        {
-          name: 'idx_category_id',
-          fields: ['category_id']
-        },
-        {
-          name: 'idx_date_range',
-          fields: ['start_date', 'end_date']
-        }
-      ]
     });
+
+    // Add indexes for faster lookups
+    await queryInterface.addIndex('budgets', ['user_id']);
+    await queryInterface.addIndex('budgets', ['category_id']);
+    await queryInterface.addIndex('budgets', ['start_date', 'end_date']);
   },
 
   async down(queryInterface, Sequelize) {

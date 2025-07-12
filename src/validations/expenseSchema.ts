@@ -2,6 +2,15 @@ import Joi from 'joi';
 import { MESSAGES } from '../utils/constants';
 
 export const createExpenseSchema = Joi.object({
+    expense_name: Joi.string()
+    .min(3)
+    .max(200)
+    .required()
+    .messages({
+        'string.min': 'Expense name must be at least 3 characters',
+        'string.max': 'Expense name cannot exceed 200 characters',
+        'any.required': 'Expense name is required'
+    }),
     amount: Joi.number()
         .positive()
         .required()
@@ -29,39 +38,48 @@ export const createExpenseSchema = Joi.object({
             'any.required': 'Category ID is required'
         }),
     expense_date: Joi.date()
-        .max('now')
         .default(new Date())
-        .messages({
-            'date.base': 'Invalid date format',
-            'date.max': 'Date cannot be in the future'
-        })
 });
 
 export const updateExpenseSchema = Joi.object({
+    category_id: Joi.number()
+        .integer()
+        .positive()
+        .required()
+        .messages({
+            'number.base': 'Category ID must be a number',
+            'number.integer': 'Category ID must be an integer',
+            'any.required': 'Category ID is required'
+        }),
     amount: Joi.number()
         .positive()
+        .required()
         .messages({
             'number.base': 'Amount must be a number',
-            'number.positive': 'Amount must be positive'
+            'number.positive': 'Amount must be positive',
+            'any.required': 'Amount is required'
+        }),
+    expense_name: Joi.string()
+        .min(3)
+        .max(100)
+        .required()
+        .messages({
+            'string.min': 'Expense name must be at least 3 characters',
+            'string.max': 'Expense name cannot exceed 100 characters',
+            'any.required': 'Expense name is required'
+        }),
+    expense_date: Joi.date()
+        .required()
+        .messages({
+            'any.required': 'Expense date is required'
         }),
     description: Joi.string()
         .min(3)
         .max(200)
+        .required()
         .messages({
             'string.min': 'Description must be at least 3 characters',
-            'string.max': 'Description cannot exceed 200 characters'
-        }),
-    category_id: Joi.number()
-        .integer()
-        .positive()
-        .messages({
-            'number.base': 'Category ID must be a number',
-            'number.integer': 'Category ID must be an integer'
-        }),
-    expense_date: Joi.date()
-        .max('now')
-        .messages({
-            'date.base': 'Invalid date format',
-            'date.max': 'Date cannot be in the future'
+            'string.max': 'Description cannot exceed 200 characters',
+            'any.required': 'Description is required'
         })
-}).min(1); 
+}); 

@@ -1,5 +1,4 @@
 import { Expense, Category, User } from "../models";
-import { ValidationService } from "./validation.service";
 import { CustomError } from "../utils/customError";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { handleServiceError } from "../utils/errorHandler";
@@ -31,20 +30,26 @@ export class ExpenseService {
     async createExpense(userId: number, data: CreateExpenseDTO): Promise<ExpenseWithCategory> {
         try {
             // Validate category exists
-            if (data.category_id) {
-                const category = await this.categoryRepository.findById(data.category_id);
-                if (!category) {
-                    throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
-                }
+            const category = await this.categoryRepository.findById(data.category_id);
+            if (!category) {
+                throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
             }
 
-            // Validate amount
-            if (data.amount <= 0) {
-                throw new CustomError(ERROR_CODES.EXPENSE.INVALID_AMOUNT, ['Amount must be greater than 0']);
+            // Set default expense date if not provided
+            if (!data.expense_date) {
+                data.expense_date = new Date();
             }
 
             // Create expense
-            const expense = await this.expenseRepository.create({ ...data, user_id: userId });
+            const expense = await this.expenseRepository.create({
+                user_id: userId,
+                category_id: data.category_id,
+                amount: data.amount,
+                expense_name: data.expense_name,
+                description: data.description,
+                expense_date: data.expense_date
+            });
+
             logger.debug('Created expense', { expenseId: expense.expense_id });
 
             // Get expense with category details
@@ -77,12 +82,8 @@ export class ExpenseService {
         total_amount: number;
     }> {
         try {
-            const { page, limit } = ValidationService.validatePagination(
-                filters?.page,
-                filters?.limit
-            );
             // Use repository's paginated method
-            const result = await this.expenseRepository.findAllByUserIdPaginated(userId, page, limit);
+            const result = await this.expenseRepository.findAllByUserIdPaginated(userId, filters?.page, filters?.limit);
             // Optionally filter by category or date range in-memory or add to repository method
             let filteredData = result.data;
             if (filters?.categoryId) {
@@ -123,9 +124,8 @@ export class ExpenseService {
 
         // Apply date filters if provided
         if (startDate && endDate) {
-            const { startDate: start, endDate: end } = ValidationService.validateDateRange(startDate, endDate);
             where.expense_date = {
-                [Op.between]: [start, end]
+                [Op.between]: [startDate, endDate]
             };
         }
 

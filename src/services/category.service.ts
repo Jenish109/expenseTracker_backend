@@ -1,5 +1,4 @@
 import { Category, Expense, Budget } from "../models";
-import { ValidationService } from "./validation.service";
 import { CustomError } from "../utils/customError";
 import { ERROR_CODES } from "../constants/errorCodes";
 import type { CreateCategoryDTO, UpdateCategoryDTO, ExpenseCategory } from "../interfaces/category.interface";
@@ -42,6 +41,7 @@ export class CategoryService {
      */
     async getAllCategories(): Promise<ExpenseCategory[]> {
         const categories = await Category.findAll({
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
             order: [['category_name', 'ASC']]
         });
 

@@ -19,18 +19,16 @@ export const createBudgetSchema = Joi.object({
             'any.required': 'Category ID is required'
         }),
     startDate: Joi.date()
-        .required()
+        .allow(null)
         .messages({
-            'date.base': 'Invalid start date format',
-            'any.required': 'Start date is required'
+            'date.base': 'Invalid start date format'
         }),
     endDate: Joi.date()
+        .allow(null)
         .min(Joi.ref('startDate'))
-        .required()
         .messages({
             'date.base': 'Invalid end date format',
-            'date.min': 'End date must be after start date',
-            'any.required': 'End date is required'
+            'date.min': 'End date must be after start date'
         })
 });
 
@@ -49,10 +47,12 @@ export const updateBudgetSchema = Joi.object({
             'number.integer': 'Category ID must be an integer'
         }),
     startDate: Joi.date()
+        .allow(null)
         .messages({
             'date.base': 'Invalid start date format'
         }),
     endDate: Joi.date()
+        .allow(null)
         .min(Joi.ref('startDate'))
         .messages({
             'date.base': 'Invalid end date format',

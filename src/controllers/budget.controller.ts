@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { BudgetService } from "../services/budget.service";
-import { ValidationService } from "../services/validation.service";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { CustomError } from "../utils/customError";
 import { handleControllerError } from "../utils/errorHandler";
@@ -29,9 +28,6 @@ export class BudgetController {
                 startDate: req.body.startDate || new Date(),
                 endDate: req.body.endDate || new Date()
             };
-
-            // Validate request body
-            await ValidationService.validateCreateBudget(budgetData);
 
             // Create budget with validated data
             await this.budgetService.addBudget(userId, budgetData);
@@ -66,11 +62,9 @@ export class BudgetController {
             const updateData = {
                 amount: req.body.amount,
                 startDate: req.body.startDate || new Date(),
-                endDate: req.body.endDate || new Date()
+                endDate: req.body.endDate || new Date(),
+                categoryId: req.body.categoryId
             };
-
-            // Validate request body
-            await ValidationService.validateUpdateBudget(updateData);
 
             // Update budget with validated data
             const budget = await this.budgetService.updateBudget(budgetId, userId, updateData);

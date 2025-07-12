@@ -7,7 +7,8 @@ module.exports = {
       user_id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
       },
       username: {
         type: Sequelize.STRING(50),
@@ -23,10 +24,6 @@ module.exports = {
         type: Sequelize.STRING(255),
         allowNull: false
       },
-      token: {
-        type: Sequelize.STRING(500),
-        allowNull: true
-      },
       monthly_budget: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true
@@ -39,18 +36,6 @@ module.exports = {
         type: Sequelize.BOOLEAN,
         defaultValue: false
       },
-      email_verification_token: {
-        type: Sequelize.STRING(500),
-        allowNull: true
-      },
-      password_reset_token: {
-        type: Sequelize.STRING(500),
-        allowNull: true
-      },
-      password_reset_expires: {
-        type: Sequelize.DATE,
-        allowNull: true
-      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -59,22 +44,8 @@ module.exports = {
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-        onUpdate: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
-    }, {
-      charset: 'utf8mb4',
-      collate: 'utf8mb4_unicode_ci',
-      indexes: [
-        {
-          name: 'idx_email',
-          fields: ['email']
-        },
-        {
-          name: 'idx_username',
-          fields: ['username']
-        }
-      ]
     });
   },
 

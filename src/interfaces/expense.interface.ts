@@ -5,6 +5,7 @@ export interface Expense {
     user_id: number;
     category_id: number;
     amount: number;
+    expense_name: string;
     description: string;
     expense_date: Date;
     created_at: Date;
@@ -18,6 +19,7 @@ export interface ExpenseWithCategory extends Expense {
 export interface CreateExpenseDTO {
     category_id: number;
     amount: number;
+    expense_name: string;
     description: string;
     expense_date?: Date;
 }
@@ -25,6 +27,7 @@ export interface CreateExpenseDTO {
 export interface UpdateExpenseDTO {
     category_id?: number;
     amount?: number;
+    expense_name?: string;
     description?: string;
     expense_date?: Date;
 }

@@ -28,6 +28,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
      */
     override async findById(categoryId: number): Promise<CategoryModel | null> {
         return this.findOne({
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
             where: { category_id: categoryId }
         });
     }
@@ -37,6 +38,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
      */
     async findByName(categoryName: string): Promise<CategoryModel | null> {
         return this.findOne({
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
             where: { category_name: categoryName }
         });
     }
@@ -46,6 +48,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
      */
     override async findAll(): Promise<CategoryModel[]> {
         return super.findAll({
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
             order: [['category_name', 'ASC']]
         });
     }
@@ -113,7 +116,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
                 [CategoryModel.sequelize!.fn('COUNT', CategoryModel.sequelize!.col('Budgets.budget_id')), 'budget_count'],
                 [CategoryModel.sequelize!.fn('SUM', CategoryModel.sequelize!.col('Expenses.amount')), 'total_expenses']
             ],
-            group: ['category_id'],
+            group: ['category_id', 'category_name', 'category_color', 'created_at'],
             order: [['category_name', 'ASC']]
         });
 
@@ -207,7 +210,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
                 [CategoryModel.sequelize!.fn('SUM', CategoryModel.sequelize!.col('Expenses.amount')), 'total_amount'],
                 [CategoryModel.sequelize!.fn('MAX', CategoryModel.sequelize!.col('Expenses.created_at')), 'latest_expense_date']
             ],
-            group: ['category_id'],
+            group: ['category_id', 'category_name', 'category_color', 'created_at'],
             order: [[CategoryModel.sequelize!.col('total_amount'), 'DESC']]
         });
 
@@ -238,6 +241,7 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
                 where: { user_id: userId },
                 attributes: ['amount', 'created_at']
             }],
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
             order: [['category_name', 'ASC']]
         });
 

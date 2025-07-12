@@ -6,7 +6,7 @@ import BudgetModel from '../models/budget.model';
 import { TABLES } from '../utils/constants';
 import Category from '../models/category.model';
 
-export interface BudgetRow extends RowDataPacket, Budget {}
+export interface BudgetRow extends RowDataPacket, Budget { }
 
 export class BudgetRepository extends BaseRepository<BudgetModel> {
     constructor(model: typeof BudgetModel) {
@@ -57,14 +57,19 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
      * Get budget with category information and current spending
      */
     async findByIdWithCategoryAndSpending(budgetId: number, userId: number): Promise<BudgetWithCategory | null> {
-        // Example: Use findOne with include for category and expenses if defined in the model
         const budget = await this.model.findOne({
             where: { budget_id: budgetId, user_id: userId },
-            include: [
-                // Add associations for category and expenses if defined in the model
-            ]
+            include: [{
+                model: Category,
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at']
+            }]
         });
-        // TODO: Map to BudgetWithCategory if needed
+
+        if (!budget) {
+            return null;
+        }
+
         return budget as unknown as BudgetWithCategory;
     }
 
@@ -74,11 +79,12 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
     async findAllByUserWithCategoryAndSpending(userId: number): Promise<BudgetWithCategory[]> {
         const budgets = await this.model.findAll({
             where: { user_id: userId },
-            include: [
-                // Add associations for category and expenses if defined in the model
-            ]
+            include: [{
+                model: Category,
+                as: 'category',
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at']
+            }]
         });
-        // TODO: Map to BudgetWithCategory if needed
         return budgets as unknown as BudgetWithCategory[];
     }
 
@@ -86,7 +92,7 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
      * Get paginated budgets for user
      */
     async findPaginatedByUser(
-        userId: number, 
+        userId: number,
         params: QueryParams
     ): Promise<{ data: BudgetWithCategory[]; total: number }> {
         const { page = 1, limit = 10, sort_by = 'created_at', sort_order = 'DESC' } = params;
@@ -109,10 +115,22 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
         if (!exists) {
             return null;
         }
-        const [affectedRows] = await this.model.update(updateData, { where: { budget_id: budgetId, user_id: userId } });
+        // Transform DTO fields to model fields
+        const modelData = {
+            amount: updateData.amount,
+            category_id: updateData.categoryId,
+            start_date: updateData.startDate ? new Date(updateData.startDate) : undefined,
+            end_date: updateData.endDate ? new Date(updateData.endDate) : undefined
+        };
+
+        const [affectedRows] = await this.model.update(modelData, {
+            where: { budget_id: budgetId, user_id: userId }
+        });
+
         if (!affectedRows) {
             return null;
         }
+
         return this.findByIdAndUser(budgetId, userId);
     }
 

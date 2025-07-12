@@ -1,79 +1,58 @@
 import { Sequelize } from 'sequelize';
-import { initUserModel } from './user.model';
-import { initCategoryModel } from './category.model';
-import { initExpenseModel } from './expense.model';
-import { initBudgetModel } from './budget.model';
-// @ts-ignore
 import config from '../config/database.config';
 
 const env = process.env.NODE_ENV || 'development';
 const dbConfig = config[env as keyof typeof config];
 
-const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password,
-  {
-    host: dbConfig.host,
-    dialect: 'mysql',
-    logging: false,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
+// Create Sequelize instance
+export const sequelize = new Sequelize(
+    dbConfig.database,
+    dbConfig.username,
+    dbConfig.password,
+    {
+        host: dbConfig.host,
+        dialect: 'mysql',
+        logging: dbConfig.logging
     }
-  }
 );
 
-// Initialize models
-const User = initUserModel(sequelize);
-const Category = initCategoryModel(sequelize);
-const Expense = initExpenseModel(sequelize);
-const Budget = initBudgetModel(sequelize);
+// Import models
+import User from './user.model';
+import Category from './category.model';
+import Expense from './expense.model';
+import Budget from './budget.model';
+import UserToken from './userToken.model';
 
-// Define associations
-User.hasMany(Expense, {
-  foreignKey: 'user_id',
-  as: 'expenses'
-});
-Expense.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'user'
-});
+// Define associations after all models are initialized
+const initializeAssociations = () => {
+    // User associations
+    User.hasMany(Expense, { foreignKey: 'user_id', as: 'expenses' });
+    User.hasMany(Budget, { foreignKey: 'user_id', as: 'budgets' });
+    User.hasMany(UserToken, { foreignKey: 'user_id', as: 'tokens' });
 
-User.hasMany(Budget, {
-  foreignKey: 'user_id',
-  as: 'budgets'
-});
-Budget.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'user'
-});
+    // Category associations
+    Category.hasMany(Expense, { foreignKey: 'category_id', as: 'expenses' });
+    Category.hasMany(Budget, { foreignKey: 'category_id', as: 'budgets' });
 
-Category.hasMany(Expense, {
-  foreignKey: 'category_id',
-  as: 'expenses'
-});
-Expense.belongsTo(Category, {
-  foreignKey: 'category_id',
-  as: 'category'
-});
+    // Expense associations
+    Expense.belongsTo(User, { foreignKey: 'user_id', as: 'expenseOwner' });
+    Expense.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
 
-Category.hasMany(Budget, {
-  foreignKey: 'category_id',
-  as: 'budgets'
-});
-Budget.belongsTo(Category, {
-  foreignKey: 'category_id',
-  as: 'category'
-});
+    // Budget associations
+    Budget.belongsTo(User, { foreignKey: 'user_id', as: 'budgetOwner' });
+    Budget.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
 
-// Export models and sequelize instance
+    // UserToken associations
+    UserToken.belongsTo(User, { foreignKey: 'user_id', as: 'tokenOwner' });
+};
+
+// Initialize associations
+initializeAssociations();
+
 export {
-  sequelize,
-  User,
-  Category,
-  Expense,
-  Budget
+    User,
+    Category,
+    Expense,
+    Budget,
+    UserToken
 }; 

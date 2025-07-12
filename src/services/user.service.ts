@@ -34,7 +34,8 @@ export class UserService {
             where: { user_id: userId },
             include: [{
                 model: Category,
-                attributes: ['category_id', 'category_name', 'category_color']
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
+                required: true
             }],
             order: [['expense_date', 'DESC']],
             limit: 5
@@ -59,7 +60,8 @@ export class UserService {
             },
             include: [{
                 model: Category,
-                attributes: ['category_id', 'category_name', 'category_color']
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
+                required: true
             }]
         });
 
@@ -68,8 +70,15 @@ export class UserService {
             where: { user_id: userId },
             include: [{
                 model: Category,
-                attributes: ['category_id', 'category_name', 'category_color']
+                attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
+                required: true
             }]
+        });
+
+        // Get all categories
+        const categories = await Category.findAll({
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at'],
+            order: [['category_name', 'ASC']]
         });
 
         // Calculate total monthly expense
@@ -90,6 +99,10 @@ export class UserService {
 
         // Process budget data with current spending
         const budgetData = budgets.map(budget => {
+            if (!budget.category) {
+                throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found for budget"]);
+            }
+
             const categoryExpenses = monthlyExpenses.filter(
                 expense => expense.category_id === budget.category_id
             );
@@ -100,7 +113,12 @@ export class UserService {
 
             return {
                 budget_id: budget.budget_id,
-                category: budget.category,
+                category: {
+                    category_id: budget.category.category_id,
+                    category_name: budget.category.category_name,
+                    category_color: budget.category.category_color,
+                    created_at: budget.category.created_at
+                },
                 amount: Number(budget.amount),
                 current_amount: currentAmount,
                 remaining_amount: Math.max(0, Number(budget.amount) - currentAmount),
@@ -111,9 +129,18 @@ export class UserService {
         // Calculate category-wise spending
         const categorySpending = monthlyExpenses.reduce((acc, expense) => {
             const categoryId = expense.category_id;
+            if (!expense.category) {
+                throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found for expense"]);
+            }
+
             if (!acc[categoryId]) {
                 acc[categoryId] = {
-                    category: expense.category,
+                    category: {
+                        category_id: expense.category.category_id,
+                        category_name: expense.category.category_name,
+                        category_color: expense.category.category_color,
+                        created_at: expense.category.created_at
+                    },
                     amount: 0,
                     percentage: 0
                 };
@@ -158,7 +185,26 @@ export class UserService {
             monthly_expense: totalMonthlyExpense,
             monthly_savings: monthlySavings,
             budget_utilization: budgetUtilization,
-            recent_transactions: recentExpenses,
+            recent_transactions: recentExpenses.map(expense => {
+                if (!expense.category) {
+                    throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found for expense"]);
+                }
+                return {
+                    expense_id: expense.expense_id,
+                    user_id: expense.user_id,
+                    category_id: expense.category_id,
+                    expense_name: expense.expense_name,
+                    amount: expense.amount,
+                    date: expense.expense_date,
+                    created_at: expense.created_at,
+                    category: {
+                        category_id: expense.category.category_id,
+                        category_name: expense.category.category_name,
+                        category_color: expense.category.category_color,
+                        created_at: expense.category.created_at
+                    }
+                };
+            }),
             budget_data: budgetData,
             spending_overview: {
                 monthly_spending: monthlySpending,
