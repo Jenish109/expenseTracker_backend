@@ -15,7 +15,7 @@ export class UserRepository extends BaseRepository<User> {
             where: {
                 [Op.or]: [
                     { email },
-                    { username }
+                    { username },
                 ]
             }
         });

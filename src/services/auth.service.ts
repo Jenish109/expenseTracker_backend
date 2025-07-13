@@ -134,6 +134,10 @@ export class AuthService {
                 throw new CustomError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, ["Invalid credentials"]);
             }
 
+            // Increment login count
+            user.login_count = (user.login_count || 0) + 1;
+            await user.save();
+
             // Generate tokens
             const tokens = this.generateTokens({
                 user_id: user.user_id,
@@ -149,8 +153,10 @@ export class AuthService {
             return {
                 user_id: user.user_id,
                 email: user.email,
+                username: user.username,
                 access_token: tokens.accessToken,
-                refresh_token: tokens.refreshToken
+                refresh_token: tokens.refreshToken,
+                login_count: user.login_count
             };
         } catch (error) {
             logger.error('Login error:', error);

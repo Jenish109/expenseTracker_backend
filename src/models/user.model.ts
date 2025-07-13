@@ -9,6 +9,7 @@ class User extends Model {
   public monthly_budget!: number | null;
   public monthly_income!: number | null;
   public email_verified!: boolean;
+  public login_count!: number;
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
 
@@ -62,6 +63,10 @@ User.init({
   updated_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
+  },
+  login_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
   },
 }, {
   sequelize,
