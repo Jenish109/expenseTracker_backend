@@ -12,15 +12,37 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
     /**
      * Find all expenses for a user with pagination
      */
-    async findAllByUserIdPaginated(userId: number, page: number = 1, limit: number = 10) {
+    async findAllByUserIdPaginated(
+        userId: number, 
+        page: number = 1, 
+        limit: number = 10,
+        searchQuery?: string,
+        categoryId?: number
+    ) {
+        const whereClause: WhereOptions<ExpenseModel> = { 
+            user_id: userId 
+        };
+
+        // Add search by expense_name if searchQuery is provided
+        if (searchQuery) {
+            whereClause.expense_name = {
+                [Op.like]: `%${searchQuery}%`
+            };
+        }
+
+        // Add category filter if categoryId is provided
+        if (categoryId) {
+            whereClause.category_id = categoryId;
+        }
+
         const options: FindOptions<ExpenseModel> = {
-            where: { user_id: userId } as WhereOptions<ExpenseModel>,
+            where: whereClause,
             include: [{
                 model: CategoryModel,
                 as: 'category',
                 attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
             }],
-            order: [['expense_date', 'DESC']] as Order,
+            order: [['created_at', 'DESC']] as Order,
             offset: (page - 1) * limit,
             limit: limit
         };

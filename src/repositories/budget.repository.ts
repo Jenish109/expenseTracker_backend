@@ -5,6 +5,7 @@ import { QueryParams } from '../interfaces/base.interface';
 import BudgetModel from '../models/budget.model';
 import { TABLES } from '../utils/constants';
 import Category from '../models/category.model';
+import { Op } from 'sequelize';
 
 export interface BudgetRow extends RowDataPacket, Budget { }
 
@@ -76,16 +77,61 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
     /**
      * Get all budgets for user with category and spending information
      */
-    async findAllByUserWithCategoryAndSpending(userId: number): Promise<BudgetWithCategory[]> {
-        const budgets = await this.model.findAll({
-            where: { user_id: userId },
-            include: [{
-                model: Category,
-                as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at']
-            }]
+    async findAllByUserWithCategoryAndSpending(
+        userId: number,
+        options?: {
+            page?: number;
+            limit?: number;
+            search?: string;
+            categoryId?: number;
+        }
+    ): Promise<{
+        data: BudgetWithCategory[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        const page = options?.page || 1;
+        const limit = options?.limit || 10;
+        const offset = (page - 1) * limit;
+
+        // Build where clause
+        const whereClause: any = { user_id: userId };
+        if (options?.categoryId) {
+            whereClause.category_id = options.categoryId;
+        }
+
+        // Include category with search condition if needed
+        const categoryInclude: any = {
+            model: Category,
+            as: 'category',
+            attributes: ['category_id', 'category_name', 'category_color', 'created_at']
+        };
+
+        if (options?.search) {
+            categoryInclude.where = {
+                category_name: {
+                    [Op.like]: `%${options.search}%`
+                }
+            };
+        }
+
+        const { count, rows } = await this.model.findAndCountAll({
+            where: whereClause,
+            include: [categoryInclude],
+            offset,
+            limit,
+            order: [['created_at', 'DESC']]
         });
-        return budgets as unknown as BudgetWithCategory[];
+
+        return {
+            data: rows as unknown as BudgetWithCategory[],
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
+        };
     }
 
     /**

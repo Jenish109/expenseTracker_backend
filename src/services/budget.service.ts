@@ -63,7 +63,15 @@ export class BudgetService {
     /**
      * Get budget list with spending information for a user
      */
-    async getBudgetListWithSpending(userId: number): Promise<{
+    async getBudgetListWithSpending(
+        userId: number,
+        options?: {
+            page?: number;
+            limit?: number;
+            search?: string;
+            categoryId?: number;
+        }
+    ): Promise<{
         total_budget: number;
         spent_amount: number;
         remaining_amount: number;
@@ -72,6 +80,10 @@ export class BudgetService {
             remaining_amount: number;
             utilization_percentage: number;
         }>;
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
     }> {
         // Get user data
         const user = await this.userRepository.findById(userId);
@@ -80,13 +92,13 @@ export class BudgetService {
         }
 
         // Get budgets with categories and spending
-        const budgets = await this.budgetRepository.findAllByUserWithCategoryAndSpending(userId);
+        const budgetResult = await this.budgetRepository.findAllByUserWithCategoryAndSpending(userId, options);
 
         // Get total expense
         const total_expense = await this.expenseRepository.getTotalExpensesByUserId(userId);
 
         // Transform budget data to avoid circular references
-        const transformedBudgets = await Promise.all(budgets.map(async (budget) => {
+        const transformedBudgets = await Promise.all(budgetResult.data.map(async (budget) => {
             const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
             const remaining = budget.amount - currentAmount;
             const utilization = (currentAmount / budget.amount) * 100;
@@ -116,7 +128,11 @@ export class BudgetService {
             total_budget: Number(user.monthly_budget) || 0,
             spent_amount: total_expense,
             remaining_amount: Number(user.monthly_budget) > total_expense ? Number(user.monthly_budget) - total_expense : 0,
-            budget_list: transformedBudgets
+            budget_list: transformedBudgets,
+            page: budgetResult.page,
+            limit: budgetResult.limit,
+            total: budgetResult.total,
+            totalPages: budgetResult.totalPages
         };
     }
 

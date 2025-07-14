@@ -116,7 +116,9 @@ export class UserController {
             const recentExpenses = expenses.slice(0, 5);
 
             // Get budgets with category info
-            const budgets = await this.budgetRepository.findAllByUserWithCategoryAndSpending(userId);
+            const budgetResult = await this.budgetRepository.findAllByUserWithCategoryAndSpending(userId, {
+                limit: 1000 // Get all budgets for dashboard
+            });
 
             // Get all categories
             const categories = await this.categoryRepository.findAll();
@@ -125,7 +127,7 @@ export class UserController {
             total_expense = expenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
 
             // Process budget data
-            const updated_budget_list = budgets
+            const updated_budget_list = budgetResult.data
                 .filter((budget: any) => budget.category && budget.category.category_id !== undefined)
                 .map((budget: any) => ({
                     budget_id: budget.budget_id,

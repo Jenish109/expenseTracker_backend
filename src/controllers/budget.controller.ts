@@ -121,7 +121,18 @@ export class BudgetController {
                 throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
             }
 
-            const budgetData = await this.budgetService.getBudgetListWithSpending(userId);
+            // Get query parameters
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 10;
+            const search = req.query.search as string;
+            const categoryId = parseInt(req.query.categoryId as string);
+
+            const budgetData = await this.budgetService.getBudgetListWithSpending(userId, {
+                page,
+                limit,
+                search: search ? search.trim() : undefined,
+                categoryId: !isNaN(categoryId) ? categoryId : undefined
+            });
 
             logger.logPerformance('Get Budget List', startTime);
             logger.info('Budget list fetched successfully', { userId });

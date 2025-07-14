@@ -45,13 +45,15 @@ export class ExpenseController {
             const startDate = req.query.startDate as string;
             const endDate = req.query.endDate as string;
             const categoryId = parseInt(req.query.categoryId as string);
+            const searchQuery = req.query.search as string;
 
             const expenses = await this.expenseService.getExpenseList(userId, {
                 page,
                 limit,
                 startDate,
                 endDate,
-                categoryId: !isNaN(categoryId) ? categoryId : undefined
+                categoryId: !isNaN(categoryId) ? categoryId : undefined,
+                searchQuery: searchQuery ? searchQuery.trim() : undefined
             });
 
             logger.logPerformance('Get All Expenses', startTime);

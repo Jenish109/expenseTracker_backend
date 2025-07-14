@@ -73,6 +73,7 @@ export class ExpenseService {
             startDate?: string;
             endDate?: string;
             categoryId?: number;
+            searchQuery?: string;
             page?: number;
             limit?: number;
         }
@@ -80,28 +81,43 @@ export class ExpenseService {
         data: ExpenseWithCategory[];
         total: number;
         total_amount: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }> {
         try {
-            // Use repository's paginated method
-            const result = await this.expenseRepository.findAllByUserIdPaginated(userId, filters?.page, filters?.limit);
-            // Optionally filter by category or date range in-memory or add to repository method
+            // Use repository's paginated method with search and filter
+            const result = await this.expenseRepository.findAllByUserIdPaginated(
+                userId,
+                filters?.page,
+                filters?.limit,
+                filters?.searchQuery,
+                filters?.categoryId
+            );
+
+            // Filter by date range if provided
             let filteredData = result.data;
-            if (filters?.categoryId) {
-                filteredData = filteredData.filter(exp => exp.category_id === filters.categoryId);
-            }
             if (filters?.startDate && filters?.endDate) {
                 const start = new Date(filters.startDate);
                 const end = new Date(filters.endDate);
-                filteredData = filteredData.filter(exp => exp.expense_date >= start && exp.expense_date <= end);
+                filteredData = filteredData.filter(exp => {
+                    const expDate = new Date(exp.expense_date);
+                    return expDate >= start && expDate <= end;
+                });
             }
+
             const total_amount = filteredData.reduce((sum, exp) => sum + Number(exp.amount), 0);
+
             return {
                 data: filteredData as ExpenseWithCategory[],
-                total: filteredData.length,
-                total_amount
+                total: result.total,
+                total_amount,
+                page: result.page,
+                limit: result.limit,
+                totalPages: result.totalPages
             };
         } catch (error) {
-            handleServiceError(error);
+            throw handleServiceError(error);
         }
     }
 

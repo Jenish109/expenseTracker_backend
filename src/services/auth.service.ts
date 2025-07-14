@@ -6,11 +6,12 @@ import type { LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
 import { UserRepository } from "../repositories/user.repository";
 import { UserToken } from "../models";
 import logger from "../utils/logger";
+import { Op } from "sequelize";
 
 export class AuthService {
     private userRepository: UserRepository;
-    private readonly ACCESS_TOKEN_EXPIRY = '15m'; // 15 minutes
-    private readonly REFRESH_TOKEN_EXPIRY = '7d'; // 7 days
+    private readonly ACCESS_TOKEN_EXPIRY = '7d'; // 7 days
+    private readonly REFRESH_TOKEN_EXPIRY = '1y'; // 1 year
     private readonly JWT_SECRET: string;
     private readonly JWT_REFRESH_SECRET: string;
 
@@ -54,13 +55,59 @@ export class AuthService {
 
     private async saveTokens(userId: number, accessToken: string, refreshToken: string) {
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+        expiresAt.setDate(expiresAt.getDate() + 7); 
 
+        // Get count of existing tokens for this user
+        const tokenCount = await UserToken.count({
+            where: { user_id: userId }
+        });
+
+        // If there are more than 5 tokens, remove the oldest ones
+        if (tokenCount >= 5) {
+            const tokensToKeep = await UserToken.findAll({
+                where: { user_id: userId },
+                order: [['created_at', 'DESC']],
+                limit: 4 // Keep the 4 most recent tokens
+            });
+
+            // Get the created_at date of the oldest token to keep
+            const oldestTokenDate = tokensToKeep[tokensToKeep.length - 1].created_at;
+
+            // Delete all tokens older than this
+            await UserToken.destroy({
+                where: {
+                    user_id: userId,
+                    created_at: {
+                        [Op.lt]: oldestTokenDate
+                    }
+                }
+            });
+        }
+
+        // Create new token entry
         await UserToken.create({
             user_id: userId,
             access_token: accessToken,
             refresh_token: refreshToken,
             expires_at: expiresAt
+        });
+
+        // Clean up expired tokens
+        await this.cleanupExpiredTokens(userId);
+    }
+
+    /**
+     * Clean up expired tokens for a user
+     */
+    private async cleanupExpiredTokens(userId: number) {
+        const now = new Date();
+        await UserToken.destroy({
+            where: {
+                user_id: userId,
+                expires_at: {
+                    [Op.lt]: now
+                }
+            }
         });
     }
 
@@ -183,13 +230,20 @@ export class AuthService {
                 throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, ["Invalid refresh token"]);
             }
 
-            // Check if refresh token is still valid in database
+            // Check if refresh token exists and get the latest one
             const tokenRecord = await UserToken.findOne({
-                where: { user_id: decoded.user_id, refresh_token: refreshToken }
+                where: { 
+                    user_id: decoded.user_id,
+                    refresh_token: refreshToken,
+                    expires_at: {
+                        [Op.gt]: new Date() // Only get non-expired tokens
+                    }
+                },
+                order: [['created_at', 'DESC']] // Get the latest token
             });
 
             if (!tokenRecord) {
-                throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, ["Refresh token has been revoked"]);
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, ["Refresh token has been revoked or expired"]);
             }
 
             // Generate new tokens
@@ -198,8 +252,7 @@ export class AuthService {
                 email: decoded.email
             });
 
-            // Update tokens
-            await this.invalidateTokens(decoded.user_id);
+            // Save new tokens without deleting old ones
             await this.saveTokens(decoded.user_id, tokens.accessToken, tokens.refreshToken);
 
             return {
@@ -218,6 +271,7 @@ export class AuthService {
      * Logout user
      */
     async logout(userId: number) {
+        // On logout, invalidate all tokens for the user
         await this.invalidateTokens(userId);
         logger.info('User logged out successfully', { userId });
     }
