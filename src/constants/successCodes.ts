@@ -28,6 +28,14 @@ export const SUCCESS_CODES = {
     CHANGE_PASSWORD: {
       status_code: 200,
       message: 'Password reset successfully.'
+    },
+    PROFILE_RETRIEVED: {
+      status_code: 200,
+      message: 'Profile retrieved successfully.'
+    },
+    PROFILE_UPDATED: {
+      status_code: 200,
+      message: 'Profile updated successfully.'
     }
   },
   USER: {
@@ -82,6 +90,16 @@ export const SUCCESS_CODES = {
     SUCCESS: {
       status_code: 200,
       message: 'Operation completed successfully.'
+    }
+  },
+  SETTINGS: {
+    RETRIEVED: {
+      status_code: 200,
+      message: 'Settings retrieved successfully.'
+    },
+    UPDATED: {
+      status_code: 200,
+      message: 'Settings updated successfully.'
     }
   }
 } as const; 

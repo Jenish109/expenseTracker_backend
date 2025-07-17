@@ -179,4 +179,28 @@ export class AuthController {
         }
     }
 
-}
+    async getProfile(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!.user_id;
+
+            const result = await this.authService.fetchProfile(userId);
+
+            return successResponse(res, result, SUCCESS_CODES.AUTH.PROFILE_RETRIEVED.message, SUCCESS_CODES.AUTH.PROFILE_RETRIEVED.status_code);
+
+        } catch (error) {
+          handleControllerError(res, error);
+        }
+      }
+
+      async updateProfile(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!.user_id;
+
+            const result = await this.authService.updateProfile(userId, req.body);
+
+            return successResponse(res, result, SUCCESS_CODES.AUTH.PROFILE_UPDATED.message, SUCCESS_CODES.AUTH.PROFILE_UPDATED.status_code);
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+      }
+    }

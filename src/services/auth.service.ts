@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ERROR_CODES } from "../utils/errorCodes";
 import { CustomError } from "../utils/customError";
-import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
+import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginDTO, RegisterDTO, UpdateProfileRequest } from "../interfaces/auth.interface";
 import { UserRepository } from "../repositories/user.repository";
 import { UserTokenRepository } from "../repositories/userToken.repository";
 import logger from "../utils/logger";
@@ -341,6 +341,29 @@ export class AuthService {
             const hashedPassword = await bcrypt.hash(newPassword, 12);
             const updatedUser = await this.userRepository.updatePassword(verificationCode.user_id, hashedPassword);
             return updatedUser;
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async fetchProfile(userId: number) {
+        try {
+            const user = await this.userRepository.findById(userId);
+            return user;
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async updateProfile(userId: number, profileData: UpdateProfileRequest) {
+        try {
+            const user = await this.userRepository.findById(userId);
+            if (!user) {
+                throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+            }
+
+            const updatedUser = await this.userRepository.updateProfile(profileData, userId);
+            return updatedUser; 
         } catch (error) {
             handleServiceError(error);
         }

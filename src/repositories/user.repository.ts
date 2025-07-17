@@ -79,4 +79,16 @@ export class UserRepository extends BaseRepository<User> {
         }
     }
 
+    async updateProfile(data: {
+        firstName?: string;
+        lastName?: string;
+    }, userId: number): Promise<number> {
+        try {
+            const updatedUser = await this.update({ first_name: data.firstName, last_name: data.lastName }, { where: { user_id: userId } });
+            return updatedUser;
+        } catch (error) {
+            handleDatabaseError(error);
+        }
+    }
+
 } 

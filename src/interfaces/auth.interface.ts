@@ -58,3 +58,8 @@ export interface ForgotPasswordResponse {
         html: string;
     };
 }
+
+export interface UpdateProfileRequest {
+    firstName?: string;
+    lastName?: string;
+}

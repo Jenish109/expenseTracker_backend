@@ -87,3 +87,16 @@ export const resetPasswordSchema = Joi.object({
             'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
         })
 });
+
+export const updateProfileSchema = Joi.object({
+    firstName: Joi.string()
+        .messages({
+            'any.required': MESSAGES.AUTH.FIRST_NAME_REQUIRED
+        })
+        .optional(),
+    lastName: Joi.string()
+        .messages({
+            'any.required': MESSAGES.AUTH.LAST_NAME_REQUIRED
+        })
+        .optional(),
+});
