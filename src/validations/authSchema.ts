@@ -28,10 +28,38 @@ export const registerSchema = Joi.object({
             'string.max': MESSAGES.AUTH.PASSWORD_MAX_LENGTH,
             'string.pattern.base': MESSAGES.AUTH.PASSWORD_PATTERN,
             'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
-        })
+        }),
+    firstName: Joi.string()
+        .required()
+        .messages({
+            'any.required': MESSAGES.AUTH.FIRST_NAME_REQUIRED
+        }),
+    lastName: Joi.string()
+        .required()
+        .messages({
+            'any.required': MESSAGES.AUTH.LAST_NAME_REQUIRED
+        }),
 });
 
 export const loginSchema = Joi.object({
+    email: Joi.string()
+        .email()
+        .messages({
+            'string.email': MESSAGES.AUTH.INVALID_EMAIL,
+            'any.required': MESSAGES.AUTH.EMAIL_REQUIRED
+        }),
+    username: Joi.string()
+        .messages({
+            'any.required': MESSAGES.AUTH.USERNAME_REQUIRED
+        }),
+    password: Joi.string()
+        .required()
+        .messages({
+            'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
+        })
+}).or('email', 'username');
+
+export const forgotPasswordSchema = Joi.object({
     email: Joi.string()
         .email()
         .required()
@@ -39,11 +67,6 @@ export const loginSchema = Joi.object({
             'string.email': MESSAGES.AUTH.INVALID_EMAIL,
             'any.required': MESSAGES.AUTH.EMAIL_REQUIRED
         }),
-    password: Joi.string()
-        .required()
-        .messages({
-            'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
-        })
 });
 
 export const resetPasswordSchema = Joi.object({
@@ -63,4 +86,4 @@ export const resetPasswordSchema = Joi.object({
             'string.pattern.base': MESSAGES.AUTH.PASSWORD_PATTERN,
             'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
         })
-}); 
+});

@@ -1,4 +1,3 @@
-import { ALL } from "dns";
 
 // HTTP Status Codes
 export const HTTP_STATUS = {
@@ -36,7 +35,9 @@ export const MESSAGES = {
         PASSWORD_MIN_LENGTH: "Password must be at least 8 characters long",
         PASSWORD_MAX_LENGTH: "Password cannot exceed 100 characters",
         PASSWORD_PATTERN: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
-        PASSWORD_REQUIRED: "Password is required"
+        PASSWORD_REQUIRED: "Password is required",
+        FIRST_NAME_REQUIRED: "First name is required",
+        LAST_NAME_REQUIRED: "Last name is required"
     },
 
     // Validation
@@ -186,34 +187,18 @@ export const CATEGORIES = [
     { name: 'other', color: '#9E9E9E' },
 ];
 
-export const ERROR_CODES = {
-    AUTHENTICATION: {
-        INVALID_TOKEN: 'AUTH_001',
-        TOKEN_EXPIRED: 'AUTH_002',
-        INVALID_CREDENTIALS: 'AUTH_003',
-        UNSUPPORTED_TWO_FA: 'AUTH_004',
-        ACCESS_DENIED: 'AUTH_005'
-    },
-    EXPENSE: {
-        INVALID_AMOUNT: 'EXP_001',
-        INVALID_CATEGORY: 'EXP_002',
-        NOT_FOUND: 'EXP_003',
-        UNAUTHORIZED_ACCESS: 'EXP_004'
-    },
-    BUDGET: {
-        INVALID_AMOUNT: 'BUD_001',
-        INVALID_PERIOD: 'BUD_002',
-        NOT_FOUND: 'BUD_003',
-        LIMIT_EXCEEDED: 'BUD_004'
-    },
-    USER: {
-        NOT_FOUND: 'USR_001',
-        DUPLICATE_EMAIL: 'USR_002',
-        INVALID_INPUT: 'USR_003'
-    },
-    GENERAL: {
-        VALIDATION_ERROR: 'GEN_001',
-        DATABASE_ERROR: 'GEN_002',
-        INTERNAL_ERROR: 'GEN_003'
-    }
+export const AUTH_PROVIDERS = {
+    EMAIL: "email",
+    GOOGLE: "google",
+  };
+
+export type ErrorDetail = {
+  status_code: number; // Http status code
+  error_code: string; // Custom error code
+  message: string;
+};
+
+export type SuccessDetail = {
+  status_code: number;
+  message: string;
 };

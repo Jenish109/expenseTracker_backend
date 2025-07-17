@@ -6,10 +6,13 @@ class User extends Model {
   public username!: string;
   public email!: string;
   public password!: string;
+  public first_name!: string;
+  public last_name!: string;
   public monthly_budget!: number | null;
   public monthly_income!: number | null;
   public email_verified!: boolean;
   public login_count!: number;
+  public auth_provider!: string;
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
 
@@ -44,6 +47,14 @@ User.init({
     type: DataTypes.STRING(255),
     allowNull: false,
   },
+  first_name: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+  },
+  last_name: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+  },
   monthly_budget: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
@@ -55,6 +66,11 @@ User.init({
   email_verified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  auth_provider: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    defaultValue: 'email',
   },
   created_at: {
     type: DataTypes.DATE,

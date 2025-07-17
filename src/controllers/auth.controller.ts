@@ -4,7 +4,9 @@ import logger from "../utils/logger";
 import type { LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
 import { AuthService } from "../services/auth.service";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
+import { SUCCESS_CODES } from "../constants/successCodes";
+import { successResponse, errorResponse } from "../utils/response.helper";
 
 export class AuthController {
     private authService: AuthService;
@@ -22,7 +24,7 @@ export class AuthController {
             const startTime = Date.now();
 
             const registerData: RegisterDTO = req.body;
-            
+
             await this.authService.register(registerData);
 
             logger.logPerformance('User Registration', startTime);
@@ -120,4 +122,61 @@ export class AuthController {
             handleControllerError(res, error);
         }
     }
+
+    async verifyUserEmail(req: Request, res: Response, next: NextFunction) {
+        try {
+            logger.logRequest(req);
+            const startTime = Date.now();
+
+            const token = req.query.token as string;
+
+            const user = await this.authService.verifyUserEmail(token);
+
+            logger.logPerformance('User Email Verification', startTime);
+
+            res.status(200).json({
+                success: true,
+                data: user,
+                message: "Email verified successfully"
+            });
+
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    async forgotPassword(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            const result = await this.authService.forgotPassword({
+                email,
+            });
+
+            if (!result) {
+                throw new CustomError(ERROR_CODES.AUTH.FORGOT_PASSWORD_FAILED, ['User with provided email not found']);
+            }
+
+            return successResponse(res, SUCCESS_CODES.AUTH.FORGOT_PASSWORD, "Password reset email sent successfully");
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    async resetPassword(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { token, password } = req.body;
+
+            const user = await this.authService.resetPassword(token, password);
+
+            if (!user) {
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_CODE, ["Invalid or expired reset token"]);
+            }
+
+            return successResponse(res, SUCCESS_CODES.AUTH.CHANGE_PASSWORD, "Password reset successfully");
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
 }

@@ -40,6 +40,11 @@ export const ERROR_CODES = {
       code: 'AUTH_007',
       message: 'Login failed',
       statusCode: 500
+    },
+    EMAIL_VERIFICATION_FAILED: {
+      code: 'AUTH_008',
+      message: 'Please verify your email before logging in.',
+      statusCode: 401
     }
   },
   USER: {

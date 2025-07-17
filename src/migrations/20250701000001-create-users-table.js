@@ -24,6 +24,14 @@ module.exports = {
         type: Sequelize.STRING(255),
         allowNull: false
       },
+      first_name: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+      },
+      last_name: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+      },
       monthly_budget: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true
@@ -35,6 +43,11 @@ module.exports = {
       email_verified: {
         type: Sequelize.BOOLEAN,
         defaultValue: false
+      },
+      auth_provider: {
+        type: Sequelize.STRING(50),
+        allowNull: false,
+        defaultValue: 'email'
       },
       created_at: {
         type: Sequelize.DATE,

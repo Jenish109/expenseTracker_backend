@@ -1,6 +1,6 @@
 import { User, Expense, Budget, Category } from "../models";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
 import { Op } from "sequelize";
 import { DashboardData } from "../interfaces/dashboard.interface";
 

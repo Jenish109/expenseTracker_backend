@@ -1,6 +1,6 @@
 import { Expense, Category, User } from "../models";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
 import { handleServiceError } from "../utils/errorHandler";
 import type { CreateExpenseDTO, UpdateExpenseDTO, ExpenseWithCategory } from "../interfaces/expense.interface";
 import { Op } from "sequelize";

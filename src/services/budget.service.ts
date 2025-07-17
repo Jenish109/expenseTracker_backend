@@ -1,5 +1,5 @@
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
 import type { CreateBudgetDTO, UpdateBudgetDTO, BudgetWithCategory } from "../interfaces/budget.interface";
 import { BudgetRepository } from "../repositories/budget.repository";
 import { CategoryRepository } from "../repositories/category.repository";
@@ -47,7 +47,7 @@ export class BudgetService {
         endDate.setMonth(endDate.getMonth() + 1); // Default to one month if no end date
 
         if (startDate > endDate) {
-            throw new CustomError(ERROR_CODES.BUDGET.INVALID_PERIOD, ["Start date cannot be after end date"]);
+            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
         }
         
         // Create new budget
@@ -172,7 +172,7 @@ export class BudgetService {
             const startDate = new Date(data.startDate);
             const endDate = new Date(data.endDate);
             if (startDate > endDate) {
-                throw new CustomError(ERROR_CODES.BUDGET.INVALID_PERIOD, ["Start date cannot be after end date"]);
+                throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
             }
         }
 

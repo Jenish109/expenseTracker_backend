@@ -1,6 +1,6 @@
 import { Category, Expense, Budget } from "../models";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
 import type { CreateCategoryDTO, UpdateCategoryDTO, ExpenseCategory } from "../interfaces/category.interface";
 import { Op } from "sequelize";
 
@@ -221,7 +221,7 @@ export class CategoryService {
         ]);
 
         if (expenseCount > 0 || budgetCount > 0) {
-            throw new CustomError(ERROR_CODES.DATABASE.CONSTRAINT_VIOLATION, ["Category is in use and cannot be deleted"]);
+            throw new CustomError(ERROR_CODES.CATEGORY.IN_USE, ["Category is in use and cannot be deleted"]);
         }
 
         await category.destroy();

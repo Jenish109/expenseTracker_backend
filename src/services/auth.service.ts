@@ -1,23 +1,33 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ERROR_CODES } from "../constants/errorCodes";
+import { ERROR_CODES } from "../utils/errorCodes";
 import { CustomError } from "../utils/customError";
-import type { LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
+import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
 import { UserRepository } from "../repositories/user.repository";
-import { UserToken } from "../models";
+import { UserTokenRepository } from "../repositories/userToken.repository";
 import logger from "../utils/logger";
 import { Op } from "sequelize";
+import { AUTH_PROVIDERS } from "../utils/constants";
+import { generateForgotPasswordEmail, generateVerificationEmail } from "../utils/email";
+import EmailVerificationCodeRepository from '../repositories/emailVerficationCode.repository';
+import { EmailService } from './email.service';
+import crypto from 'crypto';
+import { handleServiceError } from "../utils/errorHandler";
+import { SUCCESS_CODES } from "../constants/successCodes";
+import { PasswordResetRepository } from "../repositories/passwordReset.repository";
 
 export class AuthService {
     private userRepository: UserRepository;
-    private readonly ACCESS_TOKEN_EXPIRY = '7d'; // 7 days
-    private readonly REFRESH_TOKEN_EXPIRY = '1y'; // 1 year
+    private userTokenRepository: UserTokenRepository;
+    private readonly ACCESS_TOKEN_EXPIRY = '15m'; // 7 days
+    private readonly REFRESH_TOKEN_EXPIRY = '7d'; // 1 year
     private readonly JWT_SECRET: string;
     private readonly JWT_REFRESH_SECRET: string;
 
     constructor() {
         this.userRepository = new UserRepository();
-        
+        this.userTokenRepository = new UserTokenRepository();
+
         // Check for required environment variables
         if (!process.env.JWT_SECRET) {
             logger.error('JWT_SECRET is not set in environment variables');
@@ -27,7 +37,7 @@ export class AuthService {
             logger.error('JWT_REFRESH_SECRET is not set in environment variables');
             throw new Error('JWT_REFRESH_SECRET must be set in environment variables');
         }
-        
+
         this.JWT_SECRET = process.env.JWT_SECRET;
         this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
     }
@@ -49,32 +59,25 @@ export class AuthService {
             return { accessToken, refreshToken };
         } catch (error) {
             logger.error('Error generating tokens:', error);
-            throw new CustomError(ERROR_CODES.AUTH.TOKEN_GENERATION_FAILED, ['Failed to generate authentication tokens']);
+            throw new CustomError(ERROR_CODES.AUTH.UNAUTHORIZED, ['Failed to generate authentication tokens']);
         }
     }
 
     private async saveTokens(userId: number, accessToken: string, refreshToken: string) {
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); 
+        expiresAt.setDate(expiresAt.getDate() + 7);
 
         // Get count of existing tokens for this user
-        const tokenCount = await UserToken.count({
-            where: { user_id: userId }
-        });
+        const tokens = await this.userTokenRepository.findByUserId(userId);
+        const tokenCount = tokens.length;
 
         // If there are more than 5 tokens, remove the oldest ones
         if (tokenCount >= 5) {
-            const tokensToKeep = await UserToken.findAll({
-                where: { user_id: userId },
-                order: [['created_at', 'DESC']],
-                limit: 4 // Keep the 4 most recent tokens
-            });
-
-            // Get the created_at date of the oldest token to keep
+            const tokensToKeep = tokens.slice(0, 4); // Keep the 4 most recent tokens
             const oldestTokenDate = tokensToKeep[tokensToKeep.length - 1].created_at;
 
             // Delete all tokens older than this
-            await UserToken.destroy({
+            await this.userTokenRepository.delete({
                 where: {
                     user_id: userId,
                     created_at: {
@@ -85,7 +88,7 @@ export class AuthService {
         }
 
         // Create new token entry
-        await UserToken.create({
+        await this.userTokenRepository.create({
             user_id: userId,
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -96,39 +99,33 @@ export class AuthService {
         await this.cleanupExpiredTokens(userId);
     }
 
-    /**
-     * Clean up expired tokens for a user
-     */
     private async cleanupExpiredTokens(userId: number) {
-        const now = new Date();
-        await UserToken.destroy({
+        await this.userTokenRepository.delete({
             where: {
                 user_id: userId,
                 expires_at: {
-                    [Op.lt]: now
+                    [Op.lt]: new Date()
                 }
             }
         });
     }
 
     private async invalidateTokens(userId: number) {
-        await UserToken.destroy({ where: { user_id: userId } });
+        await this.userTokenRepository.deleteByUserId(userId);
     }
 
-    // Function to sanitize input
     private sanitizeInput(input: string): string {
         return (input || "").trim().replace(/[<>&;]/g, "");
     }
 
-    /**
-     * Register a new user
-     */
     async register(registerData: RegisterDTO) {
         // Sanitize user input
         const sanitizedData = {
             username: this.sanitizeInput(registerData.username || ""),
             email: this.sanitizeInput(registerData.email || ""),
-            password: registerData.password || "", // Don't sanitize password (we hash it)
+            password: registerData.password || "",
+            first_name: registerData.firstName || "",
+            last_name: registerData.lastName || "",
         };
 
         // Check if username or email already exists
@@ -152,7 +149,25 @@ export class AuthService {
         const user = await this.userRepository.create({
             username: sanitizedData.username,
             email: sanitizedData.email,
-            password: hashedPassword
+            password: hashedPassword,
+            first_name: sanitizedData.first_name,
+            last_name: sanitizedData.last_name,
+            email_verified: false,
+            auth_provider: AUTH_PROVIDERS.EMAIL,
+        });
+
+        // Create email verification token
+        const { token } = await EmailVerificationCodeRepository.createVerificationToken(user.user_id);
+
+
+        const frontendUrl = process.env.FRONTEND_URL;
+        const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
+        const { subject, html } = generateVerificationEmail(verificationLink);
+
+        await EmailService.sendMail({
+            to: user.email,
+            subject,
+            html,
         });
 
         logger.info('User registered successfully', { userId: user.user_id });
@@ -160,9 +175,6 @@ export class AuthService {
         return user;
     }
 
-    /**
-     * User Login
-     */
     async login(loginData: LoginDTO) {
         try {
             // Find user
@@ -174,6 +186,12 @@ export class AuthService {
             if (!user) {
                 throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
             }
+
+
+            if (!user.email_verified) {
+                throw new CustomError(ERROR_CODES.AUTH.EMAIL_VERIFICATION_FAILED, ['Please verify your email before logging in.']);
+            }
+
 
             // Verify password
             const isPasswordValid = await bcrypt.compare(loginData.password, user.password);
@@ -210,13 +228,10 @@ export class AuthService {
             if (error instanceof CustomError) {
                 throw error;
             }
-            throw new CustomError(ERROR_CODES.AUTH.LOGIN_FAILED, ['Login failed. Please try again.']);
+            throw new CustomError(ERROR_CODES.AUTH.UNAUTHORIZED, ['Login failed. Please try again.']);
         }
     }
 
-    /**
-     * Refresh access token
-     */
     async refreshToken(refreshToken: string) {
         try {
             // Verify refresh token
@@ -231,18 +246,9 @@ export class AuthService {
             }
 
             // Check if refresh token exists and get the latest one
-            const tokenRecord = await UserToken.findOne({
-                where: { 
-                    user_id: decoded.user_id,
-                    refresh_token: refreshToken,
-                    expires_at: {
-                        [Op.gt]: new Date() // Only get non-expired tokens
-                    }
-                },
-                order: [['created_at', 'DESC']] // Get the latest token
-            });
+            const validToken = await this.userTokenRepository.findValidToken(decoded.user_id, refreshToken);
 
-            if (!tokenRecord) {
+            if (!validToken) {
                 throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, ["Refresh token has been revoked or expired"]);
             }
 
@@ -267,12 +273,76 @@ export class AuthService {
         }
     }
 
-    /**
-     * Logout user
-     */
     async logout(userId: number) {
-        // On logout, invalidate all tokens for the user
         await this.invalidateTokens(userId);
         logger.info('User logged out successfully', { userId });
+    }
+
+    async verifyUserEmail(token: string) {
+        try {
+            const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+            const verificationCode = await EmailVerificationCodeRepository.findValidToken(hashedToken);
+
+            if (!verificationCode) {
+                return null;
+            }
+
+            await EmailVerificationCodeRepository.markTokenAsUsed(verificationCode.id);
+
+            const updatedUser = await this.userRepository.updateEmailVerificationStatus(Number(verificationCode.user_id), true);
+
+            return updatedUser;
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async forgotPassword(params: ForgotPasswordRequest): Promise<ForgotPasswordResponse | null> {
+        try {
+            const { email } = params;
+
+            const user = await this.userRepository.findByEmail(email);
+            if (!user) {
+                return null;
+            }
+
+            const { token } = await PasswordResetRepository.createResetToken(user.user_id);
+
+            const frontendUrl = process.env.FRONTEND_URL;
+            const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+            const { subject, html } = generateForgotPasswordEmail(resetLink);
+
+            await EmailService.sendMail({
+                to: user.email,
+                subject,
+                html,
+            });
+
+            return {
+                user,
+                emailData: { subject, html }
+            };
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async resetPassword(token: string, newPassword: string) {
+        try {
+            const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+            const verificationCode = await PasswordResetRepository.findValidToken(hashedToken);
+            if (!verificationCode) {
+                return null;
+            }
+
+            await PasswordResetRepository.markTokenAsUsed(verificationCode.id);
+
+            const hashedPassword = await bcrypt.hash(newPassword, 12);
+            const updatedUser = await this.userRepository.updatePassword(verificationCode.user_id, hashedPassword);
+            return updatedUser;
+        } catch (error) {
+            handleServiceError(error);
+        }
     }
 } 
