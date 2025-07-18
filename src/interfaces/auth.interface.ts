@@ -18,8 +18,13 @@ export interface LoginDTO {
 }
 
 export interface ChangePasswordDTO {
-    current_password: string;
-    new_password: string;
+    currentPassword: string;
+    newPassword: string;
+}
+
+export interface ChangeEmailDTO {
+    newEmail: string;
+    password: string;
 }
 
 export interface JWTPayload {
@@ -62,4 +67,5 @@ export interface ForgotPasswordResponse {
 export interface UpdateProfileRequest {
     firstName?: string;
     lastName?: string;
+    email?: string;
 }

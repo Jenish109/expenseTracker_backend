@@ -29,6 +29,10 @@ export const SUCCESS_CODES = {
       status_code: 200,
       message: 'Password reset successfully.'
     },
+    CHANGE_EMAIL: {
+      status_code: 200,
+      message: 'Email changed successfully. Please verify your new email address.'
+    },
     PROFILE_RETRIEVED: {
       status_code: 200,
       message: 'Profile retrieved successfully.'

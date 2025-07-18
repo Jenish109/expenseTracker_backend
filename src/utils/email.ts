@@ -44,3 +44,17 @@ export const generateForgotPasswordEmail = (resetLink: string) => {
 
   return { subject, html };
 };
+
+
+export const generatePasswordChangedEmail = (email: string) => {
+  const subject = "Your password was changed";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background: hsl(0,0%,100%); color: hsl(222.2,84%,4.9%); border: 1px solid hsl(214.3,31.8%,91.4%); border-radius: 8px; padding: 32px;">
+      <h2>Hello👋</h2>
+      <p>Your password has been changed successfully. If you did not perform this action, please contact support immediately.</p>
+    </div>
+  `;
+
+  return { subject, html };
+};
+

@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { validatePayload } from '../middlewares/validation.middleware';
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema } from '../validations/authSchema';
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema, changePasswordSchema, changeEmailSchema } from '../validations/authSchema';
 import verifyToken from '../middlewares/auth.middleware';
 
 const authRoute: Router = express.Router();
@@ -19,6 +19,9 @@ authRoute.post(
     validatePayload(resetPasswordSchema),
     authController.resetPassword.bind(authController)
 );
+
+authRoute.post('/change-password', verifyToken, validatePayload(changePasswordSchema), authController.changePassword.bind(authController));
+authRoute.post('/change-email', verifyToken, validatePayload(changeEmailSchema), authController.changeEmail.bind(authController));
 
 authRoute.get("/profile", verifyToken, authController.getProfile.bind(authController));
 authRoute.put("/profile", verifyToken, validatePayload(updateProfileSchema), authController.updateProfile.bind(authController));

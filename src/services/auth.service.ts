@@ -8,7 +8,7 @@ import { UserTokenRepository } from "../repositories/userToken.repository";
 import logger from "../utils/logger";
 import { Op } from "sequelize";
 import { AUTH_PROVIDERS } from "../utils/constants";
-import { generateForgotPasswordEmail, generateVerificationEmail } from "../utils/email";
+import { generateForgotPasswordEmail, generatePasswordChangedEmail, generateVerificationEmail } from "../utils/email";
 import EmailVerificationCodeRepository from '../repositories/emailVerficationCode.repository';
 import { EmailService } from './email.service';
 import crypto from 'crypto';
@@ -364,6 +364,64 @@ export class AuthService {
 
             const updatedUser = await this.userRepository.updateProfile(profileData, userId);
             return updatedUser; 
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async changePassword(userId: number, currentPassword: string, newPassword: string) {
+        try {
+            const user = await this.userRepository.findById(userId);
+            if (!user) {
+                throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+            }
+            const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+            if (!isPasswordValid) {
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, ["Current password is incorrect"]);
+            }
+            const hashedPassword = await bcrypt.hash(newPassword, 12);
+            await this.userRepository.updatePassword(userId, hashedPassword);
+
+            const { subject, html } = generatePasswordChangedEmail(user.email);
+            await EmailService.sendMail({
+                to: user.email,
+                subject,
+                html,
+            });
+            return true;
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async changeEmail(userId: number, newEmail: string, password: string) {
+        try {
+            const user = await this.userRepository.findById(userId);
+            if (!user) {
+                throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+            }
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, ["Password is incorrect"]);
+            }
+            // Check if new email is already taken
+            const existingUser = await this.userRepository.findByEmail(newEmail);
+            if (existingUser && existingUser.user_id !== userId) {
+                throw new CustomError(ERROR_CODES.USER.ALREADY_EXISTS, ["Email already exists"]);
+            }
+            // Update email and set email_verified to false
+            await this.userRepository.update({ email: newEmail, email_verified: false }, { where: { user_id: userId } });
+            // Send verification email
+            const { token } = await EmailVerificationCodeRepository.createVerificationToken(userId);
+            const frontendUrl = process.env.FRONTEND_URL;
+            const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
+            const { subject, html } = generateVerificationEmail(verificationLink);
+            await EmailService.sendMail({
+                to: newEmail,
+                subject,
+                html,
+            });
+            return true;
         } catch (error) {
             handleServiceError(error);
         }

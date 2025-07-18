@@ -188,11 +188,11 @@ export class AuthController {
             return successResponse(res, result, SUCCESS_CODES.AUTH.PROFILE_RETRIEVED.message, SUCCESS_CODES.AUTH.PROFILE_RETRIEVED.status_code);
 
         } catch (error) {
-          handleControllerError(res, error);
+            handleControllerError(res, error);
         }
-      }
+    }
 
-      async updateProfile(req: Request, res: Response, next: NextFunction) {
+    async updateProfile(req: Request, res: Response, next: NextFunction) {
         try {
             const userId = req.user!.user_id;
 
@@ -202,5 +202,27 @@ export class AuthController {
         } catch (error) {
             handleControllerError(res, error);
         }
-      }
     }
+
+    async changePassword(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!.user_id;
+            const { currentPassword, newPassword } = req.body;
+            await this.authService.changePassword(userId, currentPassword, newPassword);
+            return successResponse(res, null, SUCCESS_CODES.AUTH.CHANGE_PASSWORD.message, SUCCESS_CODES.AUTH.CHANGE_PASSWORD.status_code);
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    async changeEmail(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!.user_id;
+            const { newEmail, password } = req.body;
+            await this.authService.changeEmail(userId, newEmail, password);
+            return successResponse(res, null, SUCCESS_CODES.AUTH.CHANGE_EMAIL.message, SUCCESS_CODES.AUTH.CHANGE_EMAIL.status_code);
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+}

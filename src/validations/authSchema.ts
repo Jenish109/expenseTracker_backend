@@ -100,3 +100,30 @@ export const updateProfileSchema = Joi.object({
         })
         .optional(),
 });
+
+export const changePasswordSchema = Joi.object({
+    currentPassword: Joi.string().required().messages({
+        'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
+    }),
+    newPassword: Joi.string()
+        .min(8)
+        .max(100)
+        .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+        .required()
+        .messages({
+            'string.min': MESSAGES.AUTH.PASSWORD_MIN_LENGTH,
+            'string.max': MESSAGES.AUTH.PASSWORD_MAX_LENGTH,
+            'string.pattern.base': MESSAGES.AUTH.PASSWORD_PATTERN,
+            'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
+        })
+});
+
+export const changeEmailSchema = Joi.object({
+    newEmail: Joi.string().email().required().messages({
+        'string.email': MESSAGES.AUTH.INVALID_EMAIL,
+        'any.required': MESSAGES.AUTH.EMAIL_REQUIRED
+    }),
+    password: Joi.string().required().messages({
+        'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
+    })
+});
