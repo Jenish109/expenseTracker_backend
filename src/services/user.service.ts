@@ -3,13 +3,29 @@ import { CustomError } from "../utils/customError";
 import { ERROR_CODES } from "../utils/errorCodes";
 import { Op } from "sequelize";
 import { DashboardData } from "../interfaces/dashboard.interface";
+import { UserRepository } from "../repositories/user.repository";
+import { ExpenseRepository } from "../repositories/expense.repository";
+import { BudgetRepository } from "../repositories/budget.repository";
+import { CategoryRepository } from "../repositories/category.repository";
+import BudgetModel from "../models/budget.model";
 
 export class UserService {
+    private userRepository: UserRepository;
+    private expenseRepository: ExpenseRepository;
+    private budgetRepository: BudgetRepository;
+    private categoryRepository: CategoryRepository;
+
+    constructor() {
+        this.userRepository = new UserRepository();
+        this.expenseRepository = new ExpenseRepository();
+        this.budgetRepository = new BudgetRepository(BudgetModel);
+        this.categoryRepository = new CategoryRepository();
+    }
     /**
      * Update user's monthly budget and income
      */
     async updateMonthlyData(userId: number, monthlyBudget: number, monthlyIncome: number): Promise<void> {
-        const user = await User.findByPk(userId);
+        const user = await this.userRepository.findById(userId);
         if (!user) {
             throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
         }
@@ -24,7 +40,7 @@ export class UserService {
      * Get user's dashboard data including expenses, budgets, and analytics
      */
     async getDashboardData(userId: number): Promise<DashboardData> {
-        const user = await User.findByPk(userId);
+        const user = await this.userRepository.findById(userId);
         if (!user) {
             throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
         }
@@ -217,7 +233,7 @@ export class UserService {
      * Update user profile
      */
     async updateProfile(userId: number, data: { username?: string; email?: string }): Promise<void> {
-        const user = await User.findByPk(userId);
+        const user = await this.userRepository.findById(userId);
         if (!user) {
             throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
         }
@@ -235,7 +251,7 @@ export class UserService {
                 whereClause.username = data.username;
             }
 
-            const existingUser = await User.findOne({
+            const existingUser = await this.userRepository.findOne({
                 where: whereClause
             });
 
@@ -250,5 +266,18 @@ export class UserService {
         }
 
         await user.update(data);
+    }
+
+    /**
+     * Delete user account and all related data
+     */
+    async deleteAccount(userId: number): Promise<void> {
+        await this.expenseRepository.deleteByUserId(userId);
+        await this.budgetRepository.deleteByUserId(userId);
+        // await this.categoryRepository.deleteByUserId(userId);
+        const deleted = await this.userRepository.deleteById(userId);
+        if (!deleted) {
+            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+        }
     }
 }

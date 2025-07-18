@@ -91,4 +91,15 @@ export class UserRepository extends BaseRepository<User> {
         }
     }
 
+    /**
+     * Delete a user by ID
+     */
+    async deleteById(userId: number): Promise<number> {
+        try {
+            const deleted = await this.delete({ where: { user_id: userId } });
+            return deleted;
+        } catch (error) {
+            handleDatabaseError(error);
+        }
+    }
 } 

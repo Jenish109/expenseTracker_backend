@@ -4,9 +4,10 @@ import type { CreateCategoryDTO, ExpenseCategory } from '../interfaces/category.
 import CategoryModel from '../models/category.model';
 import ExpenseModel from '../models/expense.model';
 import BudgetModel from '../models/budget.model';
-import { Op, DestroyOptions, UpdateOptions } from 'sequelize';
+import { Op, DestroyOptions, UpdateOptions, WhereOptions } from 'sequelize';
 import { CustomError } from '../utils/customError';
 import { ERROR_CODES } from '../constants/errorCodes';
+import { handleDatabaseError } from '../utils/errorHandler';
 
 export class CategoryRepository extends BaseRepository<CategoryModel> {
     constructor() {
@@ -277,5 +278,18 @@ export class CategoryRepository extends BaseRepository<CategoryModel> {
             expenseCount,
             budgetCount
         };
+    }
+
+    /**
+     * Delete all categories by user ID
+     */
+    async deleteByUserId(userId: number): Promise<void> {
+        try {
+            await this.delete({
+                where: { user_id: userId } as WhereOptions<CategoryModel>
+            });
+        } catch (error) {
+            handleDatabaseError(error);
+        }
     }
 } 

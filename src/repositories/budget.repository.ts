@@ -5,7 +5,8 @@ import { QueryParams } from '../interfaces/base.interface';
 import BudgetModel from '../models/budget.model';
 import { TABLES } from '../utils/constants';
 import Category from '../models/category.model';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
+import { handleDatabaseError } from '../utils/errorHandler';
 
 export interface BudgetRow extends RowDataPacket, Budget { }
 
@@ -256,5 +257,18 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
     async getBudgetsOverLimit(userId: number): Promise<BudgetWithCategory[]> {
         // TODO: Implement using Sequelize queries and associations
         return [];
+    }
+
+    /**
+     * Delete all budgets by user ID
+     */
+    async deleteByUserId(userId: number): Promise<void> {
+        try {
+            await this.delete({
+                where: { user_id: userId } as WhereOptions<BudgetModel>
+            });
+        } catch (error) {
+            handleDatabaseError(error);
+        }
     }
 } 

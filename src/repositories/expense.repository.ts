@@ -3,6 +3,7 @@ import ExpenseModel from '../models/expense.model';
 import CategoryModel from '../models/category.model';
 import type { CreateExpenseDTO, UpdateExpenseDTO } from '../interfaces/expense.interface';
 import { Op, WhereOptions, Order, FindOptions, UpdateOptions, DestroyOptions } from 'sequelize';
+import { handleDatabaseError } from '../utils/errorHandler';
 
 export class ExpenseRepository extends BaseRepository<ExpenseModel> {
     constructor() {
@@ -264,5 +265,18 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
         };
 
         return ExpenseModel.findAll(options);
+    }
+
+    /**
+     * Delete all expenses by user ID
+     */
+    async deleteByUserId(userId: number): Promise<void> {
+        try {
+            await this.delete({
+                where: { user_id: userId } as WhereOptions<ExpenseModel>
+            }); 
+        } catch (error) {
+            handleDatabaseError(error);
+        }
     }
 } 

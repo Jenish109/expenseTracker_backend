@@ -17,4 +17,10 @@ export const monthlyDataSchema = Joi.object({
             'number.positive': 'Monthly income must be positive',
             'any.required': 'Monthly income is required'
         })
+});
+
+export const deleteAccountSchema = Joi.object({
+    password: Joi.string().required().messages({
+        'any.required': 'Password is required to delete account.'
+    })
 }); 

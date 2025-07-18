@@ -10,18 +10,22 @@ import { CategoryRepository } from "../repositories/category.repository";
 import { BudgetRepository } from "../repositories/budget.repository";
 import { Pool } from "mysql2/promise";
 import BudgetModel from '../models/budget.model';
+import { UserService } from "../services/user.service";
+import bcrypt from "bcrypt";
 
 export class UserController {
     private userRepository: UserRepository;
     private expenseRepository: ExpenseRepository;
     private categoryRepository: CategoryRepository;
     private budgetRepository: BudgetRepository;
+    private userService: UserService;
 
     constructor() {
         this.userRepository = new UserRepository();
         this.expenseRepository = new ExpenseRepository();
         this.categoryRepository = new CategoryRepository();
         this.budgetRepository = new BudgetRepository(BudgetModel);
+        this.userService = new UserService();
     }
 
     /**
@@ -214,6 +218,50 @@ export class UserController {
                 success: true,
                 data: dashboard_data,
                 message: "Dashboard data retrieved successfully"
+            });
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    /**
+     * Delete user account
+     */
+    async deleteAccount(req: Request, res: Response) {
+        try {
+            logger.logRequest(req);
+            const startTime = Date.now();
+
+            const userId = req.user?.user_id;
+            if (!userId) {
+                throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
+            }
+
+            const { password } = req.body;
+            if (!password) {
+                throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Password is required to delete account"]);
+            }
+
+            // Validate password
+            const user = await this.userRepository.findById(userId);
+            if (!user) {
+                throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+            }
+       
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, ["Invalid password"]);
+            }
+
+            // Delete account and related data
+            await this.userService.deleteAccount(userId);
+
+            logger.logPerformance('Delete Account', startTime);
+            logger.info('User account deleted successfully', { userId });
+
+            res.status(200).json({
+                success: true,
+                message: "Account deleted successfully"
             });
         } catch (error) {
             handleControllerError(res, error);
