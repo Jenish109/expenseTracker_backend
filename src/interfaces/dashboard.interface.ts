@@ -21,6 +21,8 @@ export interface DashboardData {
                 category_id: number;
                 category_name: string;
                 category_color: string;
+                user_id: number;
+                is_default: boolean;
                 created_at: Date;
             };
             amount: number;

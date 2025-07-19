@@ -87,6 +87,7 @@ export abstract class BaseRepository<T extends Model> {
      */
     async exists(options: FindOptions<T>): Promise<boolean> {
         const count = await this.model.count(options);
+        console.log("BaseRepository.exists - count:", count, "options:", JSON.stringify(options));
         return count > 0;
     }
 

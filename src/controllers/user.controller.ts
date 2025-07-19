@@ -139,6 +139,8 @@ export class UserController {
                         category_id: budget.category.category_id,
                         category_name: budget.category.category_name,
                         category_color: budget.category.category_color,
+                        user_id: budget.category.user_id!,
+                        is_default: budget.category.is_default,
                         created_at: budget.category.created_at
                     },
                     current_amount: budget.current_amount,
@@ -159,6 +161,8 @@ export class UserController {
                         category_id: category.category_id,
                         category_name: category.category_name,
                         category_color: category.category_color,
+                        user_id: category.user_id!,
+                        is_default: category.is_default,
                         created_at: category.created_at
                     },
                     amount: current_amount,
@@ -192,6 +196,8 @@ export class UserController {
                     category_id: expense.category.category_id,
                     category_name: expense.category.category_name,
                     category_color: expense.category.category_color,
+                    user_id: expense.category.user_id!,
+                    is_default: expense.category.is_default,
                     created_at: expense.category.created_at
                 }
             }));

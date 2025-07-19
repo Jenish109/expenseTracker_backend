@@ -64,7 +64,7 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
             include: [{
                 model: Category,
                 as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at']
             }]
         });
 
@@ -107,7 +107,7 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
         const categoryInclude: any = {
             model: Category,
             as: 'category',
-            attributes: ['category_id', 'category_name', 'category_color', 'created_at']
+            attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at']
         };
 
         if (options?.search) {

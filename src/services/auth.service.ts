@@ -15,10 +15,12 @@ import crypto from 'crypto';
 import { handleServiceError } from "../utils/errorHandler";
 import { SUCCESS_CODES } from "../constants/successCodes";
 import { PasswordResetRepository } from "../repositories/passwordReset.repository";
+import { CategoryService } from "./category.service";
 
 export class AuthService {
     private userRepository: UserRepository;
     private userTokenRepository: UserTokenRepository;
+    private categoryService: CategoryService;
     private readonly ACCESS_TOKEN_EXPIRY = '15m'; // 7 days
     private readonly REFRESH_TOKEN_EXPIRY = '7d'; // 1 year
     private readonly JWT_SECRET: string;
@@ -27,6 +29,7 @@ export class AuthService {
     constructor() {
         this.userRepository = new UserRepository();
         this.userTokenRepository = new UserTokenRepository();
+        this.categoryService = new CategoryService();
 
         // Check for required environment variables
         if (!process.env.JWT_SECRET) {
@@ -169,6 +172,15 @@ export class AuthService {
             subject,
             html,
         });
+
+        // Create default categories for the new user
+        try {
+            await this.categoryService.ensureDefaultCategoriesForUser(user.user_id);
+            logger.info('Default categories created for user', { userId: user.user_id });
+        } catch (error) {
+            logger.error('Failed to create default categories for user', { userId: user.user_id, error });
+            // Don't throw error here as user registration should still succeed
+        }
 
         logger.info('User registered successfully', { userId: user.user_id });
 

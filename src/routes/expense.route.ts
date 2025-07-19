@@ -1,16 +1,11 @@
 import express, { Router } from 'express';
 import verifyToken from '../middlewares/auth.middleware';
 import { ExpenseController } from '../controllers/expense.controller';
-import { CategoryController } from '../controllers/category.controller';
 import { validatePayload } from '../middlewares/validation.middleware';
 import { createExpenseSchema, updateExpenseSchema } from '../validations/expenseSchema';
 
 const expenseRoute: Router = express.Router();
 const expenseController = new ExpenseController();
-const categoryController = new CategoryController();
-
-// Category routes
-expenseRoute.get('/categories', verifyToken, categoryController.getAllCategories.bind(categoryController));
 
 // Expense routes
 expenseRoute.get('/get-expense-list', verifyToken, expenseController.getAllExpenses.bind(expenseController));

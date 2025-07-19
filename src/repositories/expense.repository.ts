@@ -41,7 +41,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             include: [{
                 model: CategoryModel,
                 as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at', 'updated_at']
             }],
             order: [['created_at', 'DESC']] as Order,
             offset: (page - 1) * limit,
@@ -68,7 +68,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             include: [{
                 model: CategoryModel,
                 as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at', 'updated_at']
             }],
             order: [['expense_date', 'DESC']] as Order
         };
@@ -111,7 +111,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             include: [{
                 model: CategoryModel,
                 as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at', 'updated_at']
             }],
             order: [['expense_date', 'DESC']] as Order
         };
@@ -131,7 +131,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
             include: [{
                 model: CategoryModel,
                 as: 'category',
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at', 'updated_at']
             }]
         };
 
@@ -232,14 +232,14 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
                 model: CategoryModel,
                 as: 'category',
                 required: true,
-                attributes: ['category_id', 'category_name', 'category_color', 'created_at', 'updated_at']
+                attributes: ['category_id', 'category_name', 'category_color', 'user_id', 'is_default', 'created_at', 'updated_at']
             }],
             attributes: [
                 'category_id',
                 [ExpenseModel.sequelize!.fn('SUM', ExpenseModel.sequelize!.col('amount')), 'total_amount'],
                 [ExpenseModel.sequelize!.fn('COUNT', ExpenseModel.sequelize!.col('expense_id')), 'expense_count']
             ],
-            group: ['category_id', 'category.category_id', 'category.category_name', 'category.category_color', 'category.created_at']
+            group: ['category_id', 'category.category_id', 'category.category_name', 'category.category_color', 'category.user_id', 'category.is_default', 'category.created_at']
         };
 
         return ExpenseModel.findAll(options);

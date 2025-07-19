@@ -36,6 +36,8 @@ export interface ExpenseSummary {
     category_id: number;
     category_name: string;
     category_color: string;
+    user_id: number;
+    is_default: boolean;
     total_amount: number;
     expense_count: number;
     percentage: number;

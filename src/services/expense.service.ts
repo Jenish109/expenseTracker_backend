@@ -158,7 +158,7 @@ export class ExpenseService {
                 [Expense.sequelize!.fn('SUM', Expense.sequelize!.col('amount')), 'total_amount'],
                 [Expense.sequelize!.fn('COUNT', Expense.sequelize!.col('expense_id')), 'expense_count']
             ],
-            group: ['category_id', 'category.category_id', 'category.category_name', 'category.category_color', 'category.created_at']
+            group: ['category_id', 'category.category_id', 'category.category_name', 'category.category_color', 'category.user_id', 'category.is_default', 'category.created_at']
         });
 
         // Calculate total amount for percentage calculation
@@ -174,6 +174,8 @@ export class ExpenseService {
                 category_id: category.category_id,
                 category_name: category.category_name,
                 category_color: category.category_color,
+                user_id: category.user_id!,
+                is_default: category.is_default,
                 total_amount: amount,
                 expense_count: Number(expense.getDataValue('expense_count')),
                 percentage: totalAmount > 0 ? (amount / totalAmount) * 100 : 0

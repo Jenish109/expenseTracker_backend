@@ -128,6 +128,21 @@ export const ERROR_CODES = {
       statusCode: 400,
       code: 'ERR-CAT-003',
       message: 'Category is in use and cannot be deleted.'
+    },
+    CANNOT_EDIT_DEFAULT: {
+      statusCode: 403,
+      code: 'ERR-CAT-004',
+      message: 'Default categories cannot be edited.'
+    },
+    NOT_AUTHORIZED: {
+      statusCode: 403,
+      code: 'ERR-CAT-005',
+      message: 'You can only edit your own categories.'
+    },
+    CANNOT_DELETE_DEFAULT: {
+      statusCode: 403,
+      code: 'ERR-CAT-006',
+      message: 'Default categories cannot be deleted.'
     }
   },
   GENERAL: {
