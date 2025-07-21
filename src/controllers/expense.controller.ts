@@ -7,6 +7,7 @@ import { handleControllerError } from '../utils/errorHandler';
 import logger from '../utils/logger';
 import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../repositories/category.repository';
+import { UserRepository } from '../repositories/user.repository';
 
 // Extend Express Request to include user property
 declare module 'express' {
@@ -24,7 +25,8 @@ export class ExpenseController {
     constructor() {
         const expenseRepository = new ExpenseRepository();
         const categoryRepository = new CategoryRepository();
-        this.expenseService = new ExpenseService(expenseRepository, categoryRepository);
+        const userRepository = new UserRepository();
+        this.expenseService = new ExpenseService(expenseRepository, categoryRepository, userRepository);
     }
 
     /**
@@ -149,7 +151,7 @@ export class ExpenseController {
 
             const expenseId = parseInt(req.params.id);
             const userId = req.user?.user_id;
-            
+
             if (!userId) {
                 throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
             }
@@ -191,7 +193,7 @@ export class ExpenseController {
 
             const expenseId = parseInt(req.params.id);
             const userId = req.user?.user_id;
-            
+
             if (!userId) {
                 throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
             }

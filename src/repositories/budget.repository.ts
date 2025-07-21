@@ -271,4 +271,36 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
             handleDatabaseError(error);
         }
     }
+
+    /**
+     * Get sum of all budgets for a user in a given month
+     */
+    async getMonthlyBudgetSum(userId: number, month: number, year: number): Promise<number> {
+        // Sums all budgets for the user where the budget's month/year overlaps the given month/year
+        const { fn, col, Op } = require('sequelize');
+        const startOfMonth = new Date(year, month - 1, 1);
+        const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+        const total = await this.model.sum('amount', {
+            where: {
+                user_id: userId,
+                [Op.or]: [
+                    {
+                        start_date: {
+                            [Op.between]: [startOfMonth, endOfMonth]
+                        }
+                    },
+                    {
+                        end_date: {
+                            [Op.between]: [startOfMonth, endOfMonth]
+                        }
+                    },
+                    {
+                        start_date: { [Op.lte]: startOfMonth },
+                        end_date: { [Op.gte]: endOfMonth }
+                    }
+                ]
+            }
+        });
+        return Number(total) || 0;
+    }
 } 

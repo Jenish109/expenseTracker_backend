@@ -4,7 +4,7 @@ import logger from "../utils/logger";
 import type { LoginDTO, RegisterDTO } from "../interfaces/auth.interface";
 import { AuthService } from "../services/auth.service";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import { SUCCESS_CODES } from "../constants/successCodes";
 import { successResponse, errorResponse } from "../utils/response.helper";
 
@@ -170,7 +170,7 @@ export class AuthController {
             const user = await this.authService.resetPassword(token, password);
 
             if (!user) {
-                throw new CustomError(ERROR_CODES.AUTH.INVALID_CODE, ["Invalid or expired reset token"]);
+                throw new CustomError(ERROR_CODES.AUTH.RESET_PASSWORD_FAILED, ["Invalid or expired reset token"]);
             }
 
             return successResponse(res, SUCCESS_CODES.AUTH.CHANGE_PASSWORD, "Password reset successfully");

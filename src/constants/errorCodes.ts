@@ -45,6 +45,21 @@ export const ERROR_CODES = {
       code: 'AUTH_008',
       message: 'Please verify your email before logging in.',
       statusCode: 401
+    },
+    UNAUTHORIZED: {
+      code: 'AUTH_009',
+      message: 'Unauthorized access',
+      statusCode: 401
+    },
+    FORGOT_PASSWORD_FAILED: {
+      code: 'AUTH_010',
+      message: 'Forgot password failed',
+      statusCode: 500
+    },
+    RESET_PASSWORD_FAILED: {
+      code: 'AUTH_011',
+      message: 'Reset password failed',
+      statusCode: 500
     }
   },
   USER: {
@@ -104,6 +119,11 @@ export const ERROR_CODES = {
       code: 'EXP_006',
       message: 'Invalid expense data',
       statusCode: 400
+    },
+    LIMIT_EXCEEDED: {
+      code: 'EXP_007',
+      message: 'Expense limit exceeded',
+      statusCode: 400
     }
   },
   BUDGET: {
@@ -126,11 +146,6 @@ export const ERROR_CODES = {
       code: 'BUD_004',
       message: 'Budget limit exceeded',
       statusCode: 400
-    },
-    OVERLAP_PERIOD: {
-      code: 'BUD_005',
-      message: 'Budget period overlaps with existing budget',
-      statusCode: 409
     }
   },
   CATEGORY: {
@@ -148,6 +163,31 @@ export const ERROR_CODES = {
       code: 'CAT_003',
       message: 'Invalid category color format',
       statusCode: 400
+    },
+    CANNOT_EDIT_DEFAULT: {
+      code: 'CAT_004',
+      message: 'Default categories cannot be edited',
+      statusCode: 403
+    },
+    NOT_AUTHORIZED: {
+      code: 'CAT_005',
+      message: 'You can only edit your own categories',
+      statusCode: 403
+    },
+    INVALID_NAME: {
+      code: 'CAT_006',
+      message: 'Invalid category name',
+      statusCode: 400
+    },
+    IN_USE: {
+      code: 'CAT_007',
+      message: 'Category is in use and cannot be deleted',
+      statusCode: 400
+    },
+    CANNOT_DELETE_DEFAULT: {
+      code: 'CAT_008',
+      message: 'Default categories cannot be deleted',
+      statusCode: 403
     }
   },
   DATABASE: {
@@ -236,6 +276,11 @@ export const ERROR_CODES = {
       code: 'GEN_005',
       message: 'Too many requests',
       statusCode: 429
+    },
+    EMAIL_SEND_FAILED: {
+      code: 'GEN_006',
+      message: 'Failed to send email',
+      statusCode: 500
     }
   }
 } as const; 

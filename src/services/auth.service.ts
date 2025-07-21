@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import { CustomError } from "../utils/customError";
 import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginDTO, RegisterDTO, UpdateProfileRequest } from "../interfaces/auth.interface";
 import { UserRepository } from "../repositories/user.repository";
@@ -21,8 +21,8 @@ export class AuthService {
     private userRepository: UserRepository;
     private userTokenRepository: UserTokenRepository;
     private categoryService: CategoryService;
-    private readonly ACCESS_TOKEN_EXPIRY = '15m'; // 7 days
-    private readonly REFRESH_TOKEN_EXPIRY = '7d'; // 1 year
+    private readonly ACCESS_TOKEN_EXPIRY = '7d'; // 7 days
+    private readonly REFRESH_TOKEN_EXPIRY = '1y'; // 1 year
     private readonly JWT_SECRET: string;
     private readonly JWT_REFRESH_SECRET: string;
 
@@ -375,7 +375,7 @@ export class AuthService {
             }
 
             const updatedUser = await this.userRepository.updateProfile(profileData, userId);
-            return updatedUser; 
+            return updatedUser;
         } catch (error) {
             handleServiceError(error);
         }

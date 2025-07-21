@@ -1,5 +1,5 @@
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import type { CreateBudgetDTO, UpdateBudgetDTO, BudgetWithCategory } from "../interfaces/budget.interface";
 import { BudgetRepository } from "../repositories/budget.repository";
 import { CategoryRepository } from "../repositories/category.repository";
@@ -20,6 +20,41 @@ export class BudgetService {
         this.categoryRepository = new CategoryRepository();
         this.expenseRepository = new ExpenseRepository();
         this.userRepository = new UserRepository();
+    }
+
+    /**
+     * Validate that adding/updating a budget does not exceed the user's monthly budget
+     * @param userId - user id
+     * @param amount - new amount to add/update
+     * @param startDate - start date of the budget
+     * @param excludeBudgetId - (optional) budget id to exclude from sum (for update)
+     * @throws CustomError if the new total would exceed the user's monthly budget
+     */
+    private async validateMonthlyBudgetLimit(userId: number, amount: number, startDate: Date, excludeBudgetId?: number) {
+        // Get user and their monthly budget
+        const user = await this.userRepository.findById(userId);
+        if (!user || user.monthly_budget == null) {
+            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User or monthly budget not found"]);
+        }
+        const monthlyBudget = Number(user.monthly_budget);
+        if (monthlyBudget <= 0) {
+            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Monthly budget must be greater than 0"]);
+        }
+        // Calculate the month and year for the budget being added/updated
+        const month = (startDate.getMonth() + 1);
+        const year = startDate.getFullYear();
+        // Get sum of all budgets for this user in this month
+        let currentMonthSum = await this.budgetRepository.getMonthlyBudgetSum(userId, month, year);
+        // If updating, subtract the old amount of the current budget
+        if (excludeBudgetId) {
+            const oldBudget = await this.budgetRepository.findByIdAndUser(excludeBudgetId, userId);
+            if (oldBudget) {
+                currentMonthSum -= Number(oldBudget.amount);
+            }
+        }
+        if (currentMonthSum + Number(amount) > monthlyBudget) {
+            throw new CustomError(ERROR_CODES.BUDGET.LIMIT_EXCEEDED, ["Adding this budget would exceed your monthly budget. Remaining: " + (monthlyBudget - currentMonthSum)]);
+        }
     }
 
     /**
@@ -49,7 +84,10 @@ export class BudgetService {
         if (startDate > endDate) {
             throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
         }
-        
+
+        // Validate monthly budget limit
+        await this.validateMonthlyBudgetLimit(userId, Number(data.amount), startDate);
+
         // Create new budget
         await BudgetModel.create({
             user_id: userId,
@@ -170,11 +208,29 @@ export class BudgetService {
         }
 
         // Validate dates
+        let startDate: Date | undefined = undefined;
         if (data.startDate && data.endDate) {
-            const startDate = new Date(data.startDate);
+            startDate = new Date(data.startDate);
             const endDate = new Date(data.endDate);
             if (startDate > endDate) {
                 throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
+            }
+        }
+
+        // Validate monthly budget limit if amount or startDate is being updated
+        if (data.amount && (data.startDate || data.endDate)) {
+            await this.validateMonthlyBudgetLimit(userId, Number(data.amount), startDate || new Date(), budgetId);
+        } else if (data.amount) {
+            // If only amount is being updated, fetch the current budget's startDate
+            const oldBudget = await this.budgetRepository.findByIdAndUser(budgetId, userId);
+            if (oldBudget) {
+                await this.validateMonthlyBudgetLimit(userId, Number(data.amount), oldBudget.start_date, budgetId);
+            }
+        } else if (data.startDate) {
+            // If only startDate is being updated, fetch the current budget's amount
+            const oldBudget = await this.budgetRepository.findByIdAndUser(budgetId, userId);
+            if (oldBudget) {
+                await this.validateMonthlyBudgetLimit(userId, Number(oldBudget.amount), new Date(data.startDate), budgetId);
             }
         }
 
@@ -215,7 +271,7 @@ export class BudgetService {
 
         // Get current spending for this budget's category
         const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
-        
+
         // Calculate remaining amount and utilization
         const remaining = budget.amount - currentAmount;
         const utilization = (currentAmount / budget.amount) * 100;

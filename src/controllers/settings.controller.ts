@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '../utils/response.helper';
 import { SUCCESS_CODES } from '../constants/successCodes';
 import { handleControllerError } from '../utils/errorHandler';
 import { ERROR_CODES } from '../constants/errorCodes';
+import { CustomError } from '../utils/customError';
 
 const settingsService = new SettingsService();
 
@@ -11,7 +12,7 @@ export const getSettings = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
     if (!userId) {
-        return errorResponse(res, ERROR_CODES.AUTH.INVALID_TOKEN.message, ERROR_CODES.AUTH.INVALID_TOKEN.statusCode);
+      return errorResponse(res, ERROR_CODES.AUTH.INVALID_TOKEN.message, ERROR_CODES.AUTH.INVALID_TOKEN.statusCode);
     }
     const settings = await settingsService.getSettings(userId);
     return successResponse(
@@ -29,9 +30,14 @@ export const updateSettings = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.user_id;
     if (!userId) {
-            return errorResponse(res, ERROR_CODES.AUTH.INVALID_TOKEN.message, ERROR_CODES.AUTH.INVALID_TOKEN.statusCode);
+      return errorResponse(res, ERROR_CODES.AUTH.INVALID_TOKEN.message, ERROR_CODES.AUTH.INVALID_TOKEN.statusCode);
     }
     const { monthlyIncome, monthlyBudget } = req.body;
+
+    // Ensure monthly_income is always greater than monthly_budget
+    if (Number(monthlyIncome) <= Number(monthlyBudget)) {
+      throw new CustomError(ERROR_CODES.VALIDATION.INVALID_FORMAT, ["Monthly income must be greater than monthly budget"]);
+    }
     await settingsService.updateSettings(userId, { monthlyIncome, monthlyBudget });
     return successResponse(
       res,

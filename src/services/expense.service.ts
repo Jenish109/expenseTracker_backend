@@ -1,12 +1,13 @@
 import { Expense, Category, User } from "../models";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import { handleServiceError } from "../utils/errorHandler";
 import type { CreateExpenseDTO, UpdateExpenseDTO, ExpenseWithCategory } from "../interfaces/expense.interface";
 import { Op } from "sequelize";
 import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import logger from '../utils/logger';
+import { UserRepository } from '../repositories/user.repository';
 
 interface ExpenseFilters {
     startDate?: string;
@@ -21,8 +22,39 @@ interface ExpenseFilters {
 export class ExpenseService {
     constructor(
         private expenseRepository: ExpenseRepository,
-        private categoryRepository: CategoryRepository
-    ) {}
+        private categoryRepository: CategoryRepository,
+        private userRepository: UserRepository // Inject UserRepository
+    ) { }
+
+    /**
+     * Helper to check if adding/updating an expense would exceed the user's monthly income
+     */
+    private async checkMonthlyIncomeLimit(userId: number, amount: number, expenseDate: Date, excludeExpenseId?: number) {
+        // Get user and monthly_income
+        const user = await this.userRepository.findById(userId);
+        if (!user || user.monthly_income == null) {
+            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['User or monthly income not found']);
+        }
+        const monthlyIncome = Number(user.monthly_income);
+
+        // Use expense_date to determine the month and year
+        const firstDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
+        const lastDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        // Get all expenses for this user in this month
+        const expensesThisMonth = await this.expenseRepository.getExpensesByDateRange(userId, firstDay, lastDay);
+        const totalThisMonth = expensesThisMonth
+            .filter(exp => !excludeExpenseId || exp.expense_id !== excludeExpenseId)
+            .reduce((sum, exp) => sum + Number(exp.amount), 0);
+
+        // Check if adding/updating this expense exceeds monthly income
+        if (totalThisMonth + Number(amount) > monthlyIncome) {
+            throw new CustomError(
+                ERROR_CODES.EXPENSE.LIMIT_EXCEEDED,
+                [excludeExpenseId ? 'Updating this expense exceeds your monthly income for the month.' : 'Adding this expense exceeds your monthly income for the month.']
+            );
+        }
+    }
 
     /**
      * Create a new expense
@@ -39,6 +71,9 @@ export class ExpenseService {
             if (!data.expense_date) {
                 data.expense_date = new Date();
             }
+
+            // Monthly income check
+            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date(data.expense_date));
 
             // Create expense
             const expense = await this.expenseRepository.create({
@@ -222,9 +257,14 @@ export class ExpenseService {
             }
 
             // Validate amount if being updated
-            if (data.amount && data.amount <= 0) {
+            const newAmount = data.amount !== undefined ? data.amount : expense.amount;
+            if (newAmount <= 0) {
                 throw new CustomError(ERROR_CODES.EXPENSE.INVALID_AMOUNT, ['Amount must be greater than 0']);
             }
+
+            // Monthly income check for update
+            const expenseDate = data.expense_date ? new Date(data.expense_date) : new Date(expense.expense_date);
+            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), expenseDate, expenseId);
 
             // Update expense
             await this.expenseRepository.update(data, { where: { expense_id: expenseId, user_id: userId } });

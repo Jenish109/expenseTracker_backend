@@ -52,6 +52,11 @@ export class UserController {
                 throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Monthly income is required"]);
             }
 
+            // Ensure monthly_income is always greater than monthly_budget
+            if (Number(monthly_income) <= Number(monthly_budget)) {
+                throw new CustomError(ERROR_CODES.VALIDATION.INVALID_FORMAT, ["Monthly income must be greater than monthly budget"]);
+            }
+
             await this.userRepository.updateMonthlyData(userId, monthly_budget, monthly_income);
 
             logger.logPerformance('Update Monthly Data', startTime);
@@ -253,7 +258,7 @@ export class UserController {
             if (!user) {
                 throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
             }
-       
+
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 throw new CustomError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, ["Invalid password"]);

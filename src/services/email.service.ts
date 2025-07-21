@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import { CustomError } from "../utils/customError";
 import { SendMailOptions } from "../interfaces/MailOptions.interface";
 

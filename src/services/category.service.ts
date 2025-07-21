@@ -1,6 +1,6 @@
 import { CategoryRepository } from "../repositories/category.repository";
 import { CustomError } from "../utils/customError";
-import { ERROR_CODES } from "../utils/errorCodes";
+import { ERROR_CODES } from "../constants/errorCodes";
 import type { CreateCategoryDTO, UpdateCategoryDTO, ExpenseCategory } from "../interfaces/category.interface";
 
 export class CategoryService {
