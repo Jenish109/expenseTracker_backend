@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import { errorHandler, notFoundHandler, uncaughtExceptionHandler, unhandledRejectionHandler } from './middlewares/error.middleware';
 import { sequelize } from './models';
 import router from './routes';
+import './schedulers/monthlyFinanceScheduler';
 
 // Load environment variables
 dotenv.config();

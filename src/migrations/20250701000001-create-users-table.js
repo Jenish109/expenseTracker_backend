@@ -32,14 +32,6 @@ module.exports = {
         type: Sequelize.STRING(100),
         allowNull: false
       },
-      monthly_budget: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
-      },
-      monthly_income: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
-      },
       email_verified: {
         type: Sequelize.BOOLEAN,
         defaultValue: false

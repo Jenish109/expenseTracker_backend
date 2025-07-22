@@ -8,8 +8,6 @@ class User extends Model {
   public password!: string;
   public first_name!: string;
   public last_name!: string;
-  public monthly_budget!: number | null;
-  public monthly_income!: number | null;
   public email_verified!: boolean;
   public login_count!: number;
   public auth_provider!: string;
@@ -54,14 +52,6 @@ User.init({
   last_name: {
     type: DataTypes.STRING(100),
     allowNull: false,
-  },
-  monthly_budget: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
-  monthly_income: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
   },
   email_verified: {
     type: DataTypes.BOOLEAN,

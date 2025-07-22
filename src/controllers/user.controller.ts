@@ -13,6 +13,9 @@ import BudgetModel from '../models/budget.model';
 import { UserService } from "../services/user.service";
 import bcrypt from "bcrypt";
 
+import { SUCCESS_CODES } from "../constants/successCodes";
+import { successResponse } from "../utils/response.helper";
+
 export class UserController {
     private userRepository: UserRepository;
     private expenseRepository: ExpenseRepository;
@@ -29,43 +32,71 @@ export class UserController {
     }
 
     /**
-     * Add monthly budget and income data
+     * Set or update monthly finance (budget/income) for a user
      */
-    async addMonthlyData(req: Request, res: Response) {
+    async setOrUpdateMonthlyFinance(req: Request, res: Response) {
         try {
             logger.logRequest(req);
-            const startTime = Date.now();
-
             const userId = req.user?.user_id;
             if (!userId) {
                 throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
             }
-
-            const { monthly_budget, monthly_income } = req.body || {};
-
-            if (!monthly_budget && !monthly_income) {
+            const { monthly_budget, monthly_income } = req.body;
+            if (monthly_budget == null && monthly_income == null) {
                 throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Monthly budget or income is required"]);
             }
-            else if (!monthly_budget) {
-                throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Monthly budget is required"]);
-            } else if (!monthly_income) {
-                throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Monthly income is required"]);
-            }
-
-            // Ensure monthly_income is always greater than monthly_budget
-            if (Number(monthly_income) <= Number(monthly_budget)) {
+            // Validation: monthly_income must be greater than monthly_budget
+            if (
+                monthly_income != null &&
+                monthly_budget != null &&
+                Number(monthly_income) <= Number(monthly_budget)
+            ) {
                 throw new CustomError(ERROR_CODES.VALIDATION.INVALID_FORMAT, ["Monthly income must be greater than monthly budget"]);
             }
+            // Always use current month as period (UTC)
+            const now = new Date();
+            const periodDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+            const record = await this.userService.setOrUpdateMonthlyFinance(userId, periodDate, { monthly_budget, monthly_income });
+            res.status(200).json({ success: true, data: record });
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
 
-            await this.userRepository.updateMonthlyData(userId, monthly_budget, monthly_income);
+    /**
+     * Get monthly finance for a user for a given period
+     */
+    async getMonthlyFinance(req: Request, res: Response) {
+        try {
+            logger.logRequest(req);
+            const userId = req.user?.user_id;
+            if (!userId) {
+                throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
+            }
+            const { period } = req.query;
+            if (!period) {
+                throw new CustomError(ERROR_CODES.VALIDATION.REQUIRED_FIELD, ["Period (YYYY-MM) is required"]);
+            }
+            const periodDate = new Date(period + '-01T00:00:00Z');
+            const record = await this.userService.getMonthlyFinance(userId, periodDate);
+            res.status(200).json({ success: true, data: record });
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
 
-            logger.logPerformance('Update Monthly Data', startTime);
-            logger.info('Monthly data updated successfully', { userId });
-
-            res.status(200).json({
-                success: true,
-                message: "Monthly data updated successfully"
-            });
+    /**
+     * Get all monthly finances for a user
+     */
+    async getAllMonthlyFinances(req: Request, res: Response) {
+        try {
+            logger.logRequest(req);
+            const userId = req.user?.user_id;
+            if (!userId) {
+                throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
+            }
+            const records = await this.userService.getAllMonthlyFinances(userId);
+            res.status(200).json({ success: true, data: records });
         } catch (error) {
             handleControllerError(res, error);
         }
@@ -207,9 +238,12 @@ export class UserController {
                 }
             }));
 
-            // Calculate final dashboard data
-            const monthly_budget = Number(user.monthly_budget);
-            const monthly_income = Number(user.monthly_income);
+            // Get monthly finance for the current month (UTC)
+            const now = new Date();
+            const period = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+            const monthlyFinance = await this.userService.getMonthlyFinance(userId, period);
+            const monthly_budget = monthlyFinance?.monthly_budget ?? 0;
+            const monthly_income = monthlyFinance?.monthly_income ?? 0;
             const savings = (monthly_income > monthly_budget) ? (monthly_income - monthly_budget) : 0;
             const budgetUtilization = monthly_budget > 0 ? (total_expense / monthly_budget) * 100 : 0;
 
@@ -230,6 +264,24 @@ export class UserController {
                 data: dashboard_data,
                 message: "Dashboard data retrieved successfully"
             });
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    /**
+     * Get user financial history for analysis
+     */
+    async getUserHistory(req: Request, res: Response) {
+        try {
+            logger.logRequest(req);
+            const userId = req.user?.user_id;
+            if (!userId) {
+                throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ["User not authenticated"]);
+            }
+            const history = await this.userService.getUserHistory(userId);
+            return successResponse(res, history, SUCCESS_CODES.USER.HISTORY_RETRIEVED.message, SUCCESS_CODES.USER.HISTORY_RETRIEVED.status_code);
+
         } catch (error) {
             handleControllerError(res, error);
         }

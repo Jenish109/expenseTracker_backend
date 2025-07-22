@@ -8,6 +8,8 @@ import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import logger from '../utils/logger';
 import { UserRepository } from '../repositories/user.repository';
+import UserMonthlyFinance from "../models/userMonthlyFinance.model";
+import { UserMonthlyFinanceRepository } from '../repositories/userMonthlyFinance.repository';
 
 interface ExpenseFilters {
     startDate?: string;
@@ -24,29 +26,31 @@ export class ExpenseService {
         private expenseRepository: ExpenseRepository,
         private categoryRepository: CategoryRepository,
         private userRepository: UserRepository // Inject UserRepository
-    ) { }
+    ) {
+        this.userMonthlyFinanceRepository = new UserMonthlyFinanceRepository();
+    }
+    private userMonthlyFinanceRepository: UserMonthlyFinanceRepository;
 
     /**
      * Helper to check if adding/updating an expense would exceed the user's monthly income
      */
     private async checkMonthlyIncomeLimit(userId: number, amount: number, expenseDate: Date, excludeExpenseId?: number) {
-        // Get user and monthly_income
-        const user = await this.userRepository.findById(userId);
-        if (!user || user.monthly_income == null) {
-            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['User or monthly income not found']);
+        // Get monthly income from UserMonthlyFinance
+        // Use UTC for period
+        const period = new Date(Date.UTC(expenseDate.getUTCFullYear(), expenseDate.getUTCMonth(), 1, 0, 0, 0, 0));
+        const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+        const monthlyIncome = monthlyFinance?.monthly_income != null ? Number(monthlyFinance.monthly_income) : 0;
+        if (monthlyIncome === 0) {
+            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['Monthly income not set for this period']);
         }
-        const monthlyIncome = Number(user.monthly_income);
-
         // Use expense_date to determine the month and year
         const firstDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
         const lastDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth() + 1, 0, 23, 59, 59, 999);
-
         // Get all expenses for this user in this month
         const expensesThisMonth = await this.expenseRepository.getExpensesByDateRange(userId, firstDay, lastDay);
         const totalThisMonth = expensesThisMonth
             .filter(exp => !excludeExpenseId || exp.expense_id !== excludeExpenseId)
             .reduce((sum, exp) => sum + Number(exp.amount), 0);
-
         // Check if adding/updating this expense exceeds monthly income
         if (totalThisMonth + Number(amount) > monthlyIncome) {
             throw new CustomError(

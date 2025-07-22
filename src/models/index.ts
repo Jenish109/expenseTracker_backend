@@ -22,6 +22,7 @@ import Category from './category.model';
 import Expense from './expense.model';
 import Budget from './budget.model';
 import UserToken from './userToken.model';
+import UserMonthlyFinance from './userMonthlyFinance.model';
 
 // Define associations after all models are initialized
 const initializeAssociations = () => {
@@ -29,6 +30,7 @@ const initializeAssociations = () => {
     User.hasMany(Expense, { foreignKey: 'user_id', as: 'expenses' });
     User.hasMany(Budget, { foreignKey: 'user_id', as: 'budgets' });
     User.hasMany(UserToken, { foreignKey: 'user_id', as: 'tokens' });
+    User.hasMany(UserMonthlyFinance, { foreignKey: 'user_id', as: 'monthlyFinances' });
 
     // Category associations
     Category.hasMany(Expense, { foreignKey: 'category_id', as: 'expenses' });
@@ -44,6 +46,9 @@ const initializeAssociations = () => {
 
     // UserToken associations
     UserToken.belongsTo(User, { foreignKey: 'user_id', as: 'tokenOwner' });
+
+    // UserMonthlyFinance associations
+    UserMonthlyFinance.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 };
 
 // Initialize associations
@@ -54,5 +59,6 @@ export {
     Category,
     Expense,
     Budget,
-    UserToken
+    UserToken,
+    UserMonthlyFinance
 }; 
