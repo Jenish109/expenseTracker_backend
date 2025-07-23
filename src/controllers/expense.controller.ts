@@ -123,7 +123,7 @@ export class ExpenseController {
                 amount: parseFloat(req.body.amount),
                 expense_name: req.body.expense_name.trim(),
                 description: req.body.description.trim(),
-                expense_date: req.body.expense_date ? new Date(req.body.expense_date) : new Date()
+                expense_date: new Date()
             };
 
             const expense = await this.expenseService.createExpense(userId, expenseData);
@@ -165,7 +165,7 @@ export class ExpenseController {
                 amount: req.body.amount,
                 expense_name: req.body.expense_name,
                 description: req.body.description,
-                expense_date: req.body.expense_date ? new Date(req.body.expense_date) : undefined
+                expense_date: new Date()
             };
 
             const updatedExpense = await this.expenseService.updateExpense(expenseId, userId, updateData);

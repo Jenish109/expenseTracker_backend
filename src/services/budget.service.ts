@@ -79,13 +79,8 @@ export class BudgetService {
         }
 
         // Validate and parse dates
-        const startDate = data.startDate ? new Date(data.startDate) : new Date();
-        const endDate = data.endDate ? new Date(data.endDate) : new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1); // Default to one day if no end date
-
-        if (startDate > endDate) {
-            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
-        }
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
 
         // Validate monthly budget limit
         await this.validateMonthlyBudgetLimit(userId, Number(data.amount), startDate);
@@ -210,14 +205,8 @@ export class BudgetService {
         }
 
         // Validate dates
-        let startDate: Date | undefined = undefined;
-        if (data.startDate && data.endDate) {
-            startDate = new Date(data.startDate);
-            const endDate = new Date(data.endDate);
-            if (startDate > endDate) {
-                throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
-            }
-        }
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
 
         // Validate monthly budget limit if amount or startDate is being updated
         if (data.amount && (data.startDate || data.endDate)) {

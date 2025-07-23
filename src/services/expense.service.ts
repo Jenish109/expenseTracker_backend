@@ -71,13 +71,8 @@ export class ExpenseService {
                 throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
             }
 
-            // Set default expense date if not provided
-            if (!data.expense_date) {
-                data.expense_date = new Date();
-            }
-
             // Monthly income check
-            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date(data.expense_date));
+            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date());
 
             // Create expense
             const expense = await this.expenseRepository.create({
@@ -86,7 +81,7 @@ export class ExpenseService {
                 amount: data.amount,
                 expense_name: data.expense_name,
                 description: data.description,
-                expense_date: data.expense_date
+                expense_date: new Date()
             });
 
             logger.debug('Created expense', { expenseId: expense.expense_id });
@@ -139,8 +134,10 @@ export class ExpenseService {
             if (filters?.startDate && filters?.endDate) {
                 const start = new Date(filters.startDate);
                 const end = new Date(filters.endDate);
+                // Ensure end date includes the whole day
+                end.setHours(23, 59, 59, 999);
                 filteredData = filteredData.filter(exp => {
-                    const expDate = new Date(exp.expense_date);
+                    const expDate = new Date(exp.created_at);
                     return expDate >= start && expDate <= end;
                 });
             }
@@ -267,8 +264,7 @@ export class ExpenseService {
             }
 
             // Monthly income check for update
-            const expenseDate = data.expense_date ? new Date(data.expense_date) : new Date(expense.expense_date);
-            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), expenseDate, expenseId);
+            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), new Date(), expenseId);
 
             // Update expense
             await this.expenseRepository.update(data, { where: { expense_id: expenseId, user_id: userId } });
