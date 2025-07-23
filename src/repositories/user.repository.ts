@@ -55,16 +55,6 @@ export class UserRepository extends BaseRepository<User> {
         });
     }
 
-    /**
-     * Update user's monthly data
-     */
-    async updateMonthlyData(userId: number, monthlyBudget: number, monthlyIncome: number): Promise<number> {
-        return this.update(
-            { monthly_budget: monthlyBudget, monthly_income: monthlyIncome },
-            { where: { user_id: userId } }
-        );
-    }
-
     async updateEmailVerificationStatus(userId: number, status: boolean): Promise<number> {
         return this.update({ email_verified: status }, { where: { user_id: userId } });
     }

@@ -8,6 +8,8 @@ import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import logger from '../utils/logger';
 import { UserRepository } from '../repositories/user.repository';
+import UserMonthlyFinance from "../models/userMonthlyFinance.model";
+import { UserMonthlyFinanceRepository } from '../repositories/userMonthlyFinance.repository';
 
 interface ExpenseFilters {
     startDate?: string;
@@ -24,29 +26,31 @@ export class ExpenseService {
         private expenseRepository: ExpenseRepository,
         private categoryRepository: CategoryRepository,
         private userRepository: UserRepository // Inject UserRepository
-    ) { }
+    ) {
+        this.userMonthlyFinanceRepository = new UserMonthlyFinanceRepository();
+    }
+    private userMonthlyFinanceRepository: UserMonthlyFinanceRepository;
 
     /**
      * Helper to check if adding/updating an expense would exceed the user's monthly income
      */
     private async checkMonthlyIncomeLimit(userId: number, amount: number, expenseDate: Date, excludeExpenseId?: number) {
-        // Get user and monthly_income
-        const user = await this.userRepository.findById(userId);
-        if (!user || user.monthly_income == null) {
-            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['User or monthly income not found']);
+        // Get monthly income from UserMonthlyFinance
+        // Use UTC for period
+        const period = new Date(Date.UTC(expenseDate.getUTCFullYear(), expenseDate.getUTCMonth(), 1, 0, 0, 0, 0));
+        const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+        const monthlyIncome = monthlyFinance?.monthly_income != null ? Number(monthlyFinance.monthly_income) : 0;
+        if (monthlyIncome === 0) {
+            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['Monthly income not set for this period']);
         }
-        const monthlyIncome = Number(user.monthly_income);
-
         // Use expense_date to determine the month and year
         const firstDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
         const lastDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth() + 1, 0, 23, 59, 59, 999);
-
         // Get all expenses for this user in this month
         const expensesThisMonth = await this.expenseRepository.getExpensesByDateRange(userId, firstDay, lastDay);
         const totalThisMonth = expensesThisMonth
             .filter(exp => !excludeExpenseId || exp.expense_id !== excludeExpenseId)
             .reduce((sum, exp) => sum + Number(exp.amount), 0);
-
         // Check if adding/updating this expense exceeds monthly income
         if (totalThisMonth + Number(amount) > monthlyIncome) {
             throw new CustomError(
@@ -67,13 +71,8 @@ export class ExpenseService {
                 throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
             }
 
-            // Set default expense date if not provided
-            if (!data.expense_date) {
-                data.expense_date = new Date();
-            }
-
             // Monthly income check
-            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date(data.expense_date));
+            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date());
 
             // Create expense
             const expense = await this.expenseRepository.create({
@@ -82,7 +81,7 @@ export class ExpenseService {
                 amount: data.amount,
                 expense_name: data.expense_name,
                 description: data.description,
-                expense_date: data.expense_date
+                expense_date: new Date()
             });
 
             logger.debug('Created expense', { expenseId: expense.expense_id });
@@ -135,8 +134,10 @@ export class ExpenseService {
             if (filters?.startDate && filters?.endDate) {
                 const start = new Date(filters.startDate);
                 const end = new Date(filters.endDate);
+                // Ensure end date includes the whole day
+                end.setHours(23, 59, 59, 999);
                 filteredData = filteredData.filter(exp => {
-                    const expDate = new Date(exp.expense_date);
+                    const expDate = new Date(exp.created_at);
                     return expDate >= start && expDate <= end;
                 });
             }
@@ -263,8 +264,7 @@ export class ExpenseService {
             }
 
             // Monthly income check for update
-            const expenseDate = data.expense_date ? new Date(data.expense_date) : new Date(expense.expense_date);
-            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), expenseDate, expenseId);
+            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), new Date(), expenseId);
 
             // Update expense
             await this.expenseRepository.update(data, { where: { expense_id: expenseId, user_id: userId } });

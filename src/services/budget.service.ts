@@ -8,18 +8,21 @@ import { UserRepository } from "../repositories/user.repository";
 import { Pool } from "mysql2/promise";
 import BudgetModel from '../models/budget.model';
 import { MESSAGES } from "../utils/constants";
+import { UserMonthlyFinanceRepository } from '../repositories/userMonthlyFinance.repository';
 
 export class BudgetService {
     private budgetRepository: BudgetRepository;
     private categoryRepository: CategoryRepository;
     private expenseRepository: ExpenseRepository;
     private userRepository: UserRepository;
+    private userMonthlyFinanceRepository: UserMonthlyFinanceRepository;
 
     constructor() {
         this.budgetRepository = new BudgetRepository(BudgetModel);
         this.categoryRepository = new CategoryRepository();
         this.expenseRepository = new ExpenseRepository();
         this.userRepository = new UserRepository();
+        this.userMonthlyFinanceRepository = new UserMonthlyFinanceRepository();
     }
 
     /**
@@ -31,12 +34,11 @@ export class BudgetService {
      * @throws CustomError if the new total would exceed the user's monthly budget
      */
     private async validateMonthlyBudgetLimit(userId: number, amount: number, startDate: Date, excludeBudgetId?: number) {
-        // Get user and their monthly budget
-        const user = await this.userRepository.findById(userId);
-        if (!user || user.monthly_budget == null) {
-            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User or monthly budget not found"]);
-        }
-        const monthlyBudget = Number(user.monthly_budget);
+        // Get monthly budget from UserMonthlyFinance
+        // Use UTC for period
+        const period = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1, 0, 0, 0, 0));
+        const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+        const monthlyBudget = monthlyFinance?.monthly_budget != null ? Number(monthlyFinance.monthly_budget) : 0;
         if (monthlyBudget <= 0) {
             throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Monthly budget must be greater than 0"]);
         }
@@ -77,13 +79,8 @@ export class BudgetService {
         }
 
         // Validate and parse dates
-        const startDate = data.startDate ? new Date(data.startDate) : new Date();
-        const endDate = data.endDate ? new Date(data.endDate) : new Date(startDate);
-        endDate.setMonth(endDate.getMonth() + 1); // Default to one month if no end date
-
-        if (startDate > endDate) {
-            throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
-        }
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
 
         // Validate monthly budget limit
         await this.validateMonthlyBudgetLimit(userId, Number(data.amount), startDate);
@@ -123,11 +120,11 @@ export class BudgetService {
         total: number;
         totalPages: number;
     }> {
-        // Get user data
-        const user = await this.userRepository.findById(userId);
-        if (!user) {
-            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
-        }
+        // Get monthly budget from UserMonthlyFinance
+        const now = new Date();
+        const period = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+        const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+        const monthlyBudget = monthlyFinance?.monthly_budget != null ? Number(monthlyFinance.monthly_budget) : 0;
 
         // Get budgets with categories and spending
         const budgetResult = await this.budgetRepository.findAllByUserWithCategoryAndSpending(userId, options);
@@ -165,9 +162,9 @@ export class BudgetService {
         }));
 
         return {
-            total_budget: Number(user.monthly_budget) || 0,
+            total_budget: monthlyBudget,
             spent_amount: total_expense,
-            remaining_amount: Number(user.monthly_budget) > total_expense ? Number(user.monthly_budget) - total_expense : 0,
+            remaining_amount: monthlyBudget > total_expense ? monthlyBudget - total_expense : 0,
             budget_list: transformedBudgets,
             page: budgetResult.page,
             limit: budgetResult.limit,
@@ -208,14 +205,8 @@ export class BudgetService {
         }
 
         // Validate dates
-        let startDate: Date | undefined = undefined;
-        if (data.startDate && data.endDate) {
-            startDate = new Date(data.startDate);
-            const endDate = new Date(data.endDate);
-            if (startDate > endDate) {
-                throw new CustomError(ERROR_CODES.BUDGET.INVALID_AMOUNT, ["Start date cannot be after end date"]);
-            }
-        }
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
 
         // Validate monthly budget limit if amount or startDate is being updated
         if (data.amount && (data.startDate || data.endDate)) {

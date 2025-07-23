@@ -46,6 +46,10 @@ export const SUCCESS_CODES = {
     PROFILE_UPDATED: {
       status_code: 200,
       message: 'Profile updated successfully.'
+    },
+    HISTORY_RETRIEVED: {
+      status_code: 200,
+      message: 'User history retrieved successfully.'
     }
   },
   EXPENSE: {

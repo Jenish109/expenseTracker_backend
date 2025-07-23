@@ -25,8 +25,8 @@ export class BudgetController {
             const budgetData = {
                 categoryId: req.body.categoryId,
                 amount: req.body.amount,
-                startDate: req.body.startDate || new Date(),
-                endDate: req.body.endDate || new Date()
+                startDate: new Date().toISOString(),
+                endDate: new Date().toISOString()
             };
 
             // Create budget with validated data
@@ -61,8 +61,8 @@ export class BudgetController {
 
             const updateData = {
                 amount: req.body.amount,
-                startDate: req.body.startDate || new Date(),
-                endDate: req.body.endDate || new Date(),
+                startDate: new Date().toISOString(),
+                endDate: new Date().toISOString(),
                 categoryId: req.body.categoryId
             };
 

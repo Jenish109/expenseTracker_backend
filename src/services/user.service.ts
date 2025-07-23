@@ -8,32 +8,77 @@ import { ExpenseRepository } from "../repositories/expense.repository";
 import { BudgetRepository } from "../repositories/budget.repository";
 import { CategoryRepository } from "../repositories/category.repository";
 import BudgetModel from "../models/budget.model";
+import { UserMonthlyFinanceRepository } from "../repositories/userMonthlyFinance.repository";
+import UserMonthlyFinance from "../models/userMonthlyFinance.model";
 
 export class UserService {
     private userRepository: UserRepository;
     private expenseRepository: ExpenseRepository;
     private budgetRepository: BudgetRepository;
     private categoryRepository: CategoryRepository;
+    private userMonthlyFinanceRepository: UserMonthlyFinanceRepository;
 
     constructor() {
         this.userRepository = new UserRepository();
         this.expenseRepository = new ExpenseRepository();
         this.budgetRepository = new BudgetRepository(BudgetModel);
         this.categoryRepository = new CategoryRepository();
+        this.userMonthlyFinanceRepository = new UserMonthlyFinanceRepository();
     }
-    /**
-     * Update user's monthly budget and income
-     */
-    async updateMonthlyData(userId: number, monthlyBudget: number, monthlyIncome: number): Promise<void> {
-        const user = await this.userRepository.findById(userId);
-        if (!user) {
-            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
-        }
 
-        await user.update({
-            monthly_budget: monthlyBudget,
-            monthly_income: monthlyIncome
-        });
+    /**
+     * Set or update a user's monthly finance (budget/income) for a given period
+     */
+    async setOrUpdateMonthlyFinance(userId: number, period: Date, data: { monthly_budget?: number; monthly_income?: number }) {
+        return this.userMonthlyFinanceRepository.createOrUpdateByUserAndPeriod(userId, period, data);
+    }
+
+    /**
+     * Get a user's monthly finance for a given period
+     */
+    async getMonthlyFinance(userId: number, period: Date) {
+        return this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+    }
+
+    /**
+     * Get all monthly finances for a user
+     */
+    async getAllMonthlyFinances(userId: number) {
+        return this.userMonthlyFinanceRepository.findAllByUser(userId);
+    }
+
+    /**
+     * Ensure current month's finance exists; if not, copy from last month
+     */
+    async ensureCurrentMonthFinance(userId: number) {
+        console.log('ensureCurrentMonthFinance called for user:', userId);
+        try {
+            const now = new Date();
+            const period = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+            console.log('Checking for current month period:', period.toISOString());
+            let monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
+            if (monthlyFinance) {
+                console.log('Current month entry exists:', monthlyFinance.id);
+            }
+            if (!monthlyFinance) {
+                // Find the most recent previous month's finance
+                const lastMonthFinance = await this.userMonthlyFinanceRepository.findMostRecentBeforePeriod(userId, period);
+                console.log('Last month finance found:', lastMonthFinance ? lastMonthFinance.id : null);
+                if (lastMonthFinance) {
+                    monthlyFinance = await this.userMonthlyFinanceRepository.createOrUpdateByUserAndPeriod(userId, period, {
+                        monthly_budget: lastMonthFinance.monthly_budget,
+                        monthly_income: lastMonthFinance.monthly_income
+                    });
+                    console.log('Created new entry for current month:', monthlyFinance.id);
+                } else {
+                    console.log('No previous month finance found to copy.');
+                }
+            }
+            return monthlyFinance;
+        } catch (err) {
+            console.error('Error in ensureCurrentMonthFinance:', err);
+            throw err;
+        }
     }
 
     /**
@@ -44,6 +89,9 @@ export class UserService {
         if (!user) {
             throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
         }
+
+        // Ensure current month's finance exists
+        await this.ensureCurrentMonthFinance(userId);
 
         // Get recent expenses
         const recentExpenses = await Expense.findAll({
@@ -58,14 +106,9 @@ export class UserService {
         });
 
         // Get all expenses for the current month
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        const endOfMonth = new Date();
-        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-        endOfMonth.setDate(0);
-        endOfMonth.setHours(23, 59, 59, 999);
+        const now = new Date();
+        const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+        const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 
         const monthlyExpenses = await Expense.findAll({
             where: {
@@ -103,14 +146,24 @@ export class UserService {
             0
         );
 
+        // Get monthly finance for the current month (UTC)
+        const period = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+        const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(user.user_id, period);
+        const monthlyBudget = monthlyFinance?.monthly_budget ?? 0;
+        const monthlyIncome = monthlyFinance?.monthly_income ?? 0;
+
+        if (!user || monthlyIncome == null) {
+            throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
+        }
+
         // Calculate budget utilization
-        const budgetUtilization = user.monthly_budget 
-            ? (totalMonthlyExpense / Number(user.monthly_budget)) * 100 
+        const budgetUtilization = monthlyIncome
+            ? (totalMonthlyExpense / Number(monthlyIncome)) * 100
             : 0;
 
         // Calculate monthly savings
-        const monthlySavings = Number(user.monthly_income) > Number(user.monthly_budget)
-            ? Number(user.monthly_income) - Number(user.monthly_budget)
+        const monthlySavings = Number(monthlyIncome) > Number(monthlyBudget)
+            ? Number(monthlyIncome) - Number(monthlyBudget)
             : 0;
 
         // Process budget data with current spending
@@ -200,9 +253,9 @@ export class UserService {
 
         return {
             user_id: userId,
-            monthly_budget: Number(user.monthly_budget),
-            monthly_income: Number(user.monthly_income),
-            monthly_expense: totalMonthlyExpense,
+            monthly_budget: Number(monthlyBudget),
+            monthly_income: Number(monthlyIncome),
+            monthly_expense: totalMonthlyExpense,   
             monthly_savings: monthlySavings,
             budget_utilization: budgetUtilization,
             recent_transactions: recentExpenses.map(expense => {
@@ -285,5 +338,54 @@ export class UserService {
         if (!deleted) {
             throw new CustomError(ERROR_CODES.USER.NOT_FOUND, ["User not found"]);
         }
+    }
+
+    /**
+     * Get user financial history: income, budget, total expenses, and total budget per month
+     */
+    async getUserHistory(userId: number) {
+        const now = new Date();
+        const currentYear = now.getUTCFullYear();
+        const currentMonth = now.getUTCMonth() + 1;
+        const monthlyFinances = (await this.userMonthlyFinanceRepository.findAllByUser(userId))
+            .filter(finance => {
+                const periodDate = new Date(finance.period);
+                const year = periodDate.getUTCFullYear();
+                const month = periodDate.getUTCMonth() + 1;
+                return !(year === currentYear && month === currentMonth);
+            });
+        if (!monthlyFinances || monthlyFinances.length === 0) return [];
+
+        // Get expense trends (grouped by month)
+        const expenseTrends = await this.expenseRepository.getExpenseTrends(userId, 'monthly', 100);
+        // Map: { 'YYYY-MM': total_expense }
+        const expenseMap: Record<string, number> = {};
+        for (const trend of expenseTrends) {
+            // trend.period is 'YYYY-MM'
+            const period = (trend as any).get('period');
+            const totalAmount = Number((trend as any).get('total_amount'));
+            expenseMap[period] = totalAmount;
+        }
+
+        // For each month, get total budget and aggregate
+        const history = [];
+        for (const finance of monthlyFinances) {
+            const periodDate = new Date(finance.period);
+            const year = periodDate.getUTCFullYear();
+            const month = periodDate.getUTCMonth() + 1; // JS: 0-based
+            const periodStr = `${year}-${month.toString().padStart(2, '0')}`;
+            // Get total budget for this month
+            const total_budget = await this.budgetRepository.getMonthlyBudgetSum(userId, month, year);
+            history.push({
+                month: periodStr,
+                income: finance.monthly_income,
+                budget: finance.monthly_budget,
+                total_expense: expenseMap[periodStr] || 0,
+                total_budget: total_budget || 0
+            });
+        }
+        // Sort by month descending
+        history.sort((a, b) => b.month.localeCompare(a.month));
+        return history;
     }
 }

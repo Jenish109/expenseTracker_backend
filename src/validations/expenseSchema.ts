@@ -37,8 +37,6 @@ export const createExpenseSchema = Joi.object({
             'number.integer': 'Category ID must be an integer',
             'any.required': 'Category ID is required'
         }),
-    expense_date: Joi.date()
-        .default(new Date())
 });
 
 export const updateExpenseSchema = Joi.object({
@@ -67,11 +65,6 @@ export const updateExpenseSchema = Joi.object({
             'string.min': 'Expense name must be at least 3 characters',
             'string.max': 'Expense name cannot exceed 100 characters',
             'any.required': 'Expense name is required'
-        }),
-    expense_date: Joi.date()
-        .required()
-        .messages({
-            'any.required': 'Expense date is required'
         }),
     description: Joi.string()
         .min(3)
