@@ -82,6 +82,12 @@ export class BudgetService {
         const startDate = new Date(data.startDate);
         const endDate = new Date(data.endDate);
 
+        //validate category is one time in month not repeat
+        const categoryInMonth = await this.budgetRepository.findByCategoryAndMonth(userId, data.categoryId, startDate.getMonth() + 1, startDate.getFullYear());
+        if (categoryInMonth) {
+            throw new CustomError(ERROR_CODES.BUDGET.CATEGORY_ALREADY_EXISTS, ["Category already exists in this month"]);
+        }
+
         // Validate monthly budget limit
         await this.validateMonthlyBudgetLimit(userId, Number(data.amount), startDate);
 
@@ -111,7 +117,7 @@ export class BudgetService {
         spent_amount: number;
         remaining_amount: number;
         budget_list: Array<BudgetWithCategory & {
-            current_amount: number;
+            current_month_spending: number;
             remaining_amount: number;
             utilization_percentage: number;
         }>;
@@ -134,9 +140,9 @@ export class BudgetService {
 
         // Transform budget data to avoid circular references
         const transformedBudgets = await Promise.all(budgetResult.data.map(async (budget) => {
-            const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
-            const remaining = budget.amount - currentAmount;
-            const utilization = (currentAmount / budget.amount) * 100;
+            const currentMonthSpending = await this.expenseRepository.getCurrentMonthExpensesByCategory(userId, budget.category_id);
+            const remaining = budget.amount - currentMonthSpending;
+            const utilization = (currentMonthSpending / budget.amount) * 100;
 
             return {
                 budget_id: budget.budget_id,
@@ -155,7 +161,7 @@ export class BudgetService {
                     is_default: budget.category.is_default,
                     created_at: budget.category.created_at
                 },
-                current_amount: currentAmount,
+                current_month_spending: currentMonthSpending,
                 remaining_amount: remaining,
                 utilization_percentage: Math.min(Math.round(utilization * 100) / 100, 100)
             };
@@ -225,6 +231,19 @@ export class BudgetService {
             }
         }
 
+        // Validate category is one time in month, not repeated
+        if (data.categoryId && data.startDate) {
+            const categoryInMonth = await this.budgetRepository.findByCategoryAndMonth(
+                userId,
+                data.categoryId,
+                startDate.getMonth() + 1,
+                startDate.getFullYear()
+            );
+            if (categoryInMonth && categoryInMonth.budget_id !== budgetId) {
+                throw new CustomError(ERROR_CODES.BUDGET.CATEGORY_ALREADY_EXISTS, ["Category already exists in this month"]);
+            }
+        }
+
         // Update budget
         const budget = await this.budgetRepository.updateBudget(budgetId, userId, data);
         if (!budget) {
@@ -260,12 +279,12 @@ export class BudgetService {
             throw new CustomError(ERROR_CODES.BUDGET.NOT_FOUND, ["Budget not found"]);
         }
 
-        // Get current spending for this budget's category
-        const currentAmount = await this.expenseRepository.getTotalExpensesByCategory(userId, budget.category_id);
+        // Get current month spending for this budget's category
+        const currentMonthSpending = await this.expenseRepository.getCurrentMonthExpensesByCategory(userId, budget.category_id);
 
         // Calculate remaining amount and utilization
-        const remaining = budget.amount - currentAmount;
-        const utilization = (currentAmount / budget.amount) * 100;
+        const remaining = budget.amount - currentMonthSpending;
+        const utilization = (currentMonthSpending / budget.amount) * 100;
 
         // Transform the data to avoid circular references
         return {
@@ -285,7 +304,7 @@ export class BudgetService {
                 is_default: budget.category.is_default,
                 created_at: budget.category.created_at
             },
-            current_amount: currentAmount,
+            current_month_spending: currentMonthSpending,
             remaining_amount: remaining,
             utilization_percentage: Math.min(Math.round(utilization * 100) / 100, 100)
         };

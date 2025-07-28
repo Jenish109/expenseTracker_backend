@@ -303,4 +303,21 @@ export class BudgetRepository extends BaseRepository<BudgetModel> {
         });
         return Number(total) || 0;
     }
+
+    /**
+     * Find budget by category and month
+     */
+    async findByCategoryAndMonth(userId: number, categoryId: number, month: number, year: number): Promise<BudgetModel | null> {
+        const startOfMonth = new Date(year, month - 1, 1);
+        const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+        return this.model.findOne({
+            where: {
+                user_id: userId,
+                category_id: categoryId,
+                created_at: {
+                    [Op.between]: [startOfMonth, endOfMonth]
+                }
+            }
+        });
+    }
 } 

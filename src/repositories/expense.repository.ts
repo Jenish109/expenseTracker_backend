@@ -14,14 +14,14 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
      * Find all expenses for a user with pagination
      */
     async findAllByUserIdPaginated(
-        userId: number, 
-        page: number = 1, 
+        userId: number,
+        page: number = 1,
         limit: number = 10,
         searchQuery?: string,
         categoryId?: number
     ) {
-        const whereClause: WhereOptions<ExpenseModel> = { 
-            user_id: userId 
+        const whereClause: WhereOptions<ExpenseModel> = {
+            user_id: userId
         };
 
         // Add search by expense_name if searchQuery is provided
@@ -100,6 +100,26 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
     }
 
     /**
+     * Get total expenses by category for current month
+     */
+    async getCurrentMonthExpensesByCategory(userId: number, categoryId: number): Promise<number> {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        
+        const result = await ExpenseModel.sum('amount', {
+            where: {
+                user_id: userId,
+                category_id: categoryId,
+                expense_date: {
+                    [Op.between]: [startOfMonth, endOfMonth]
+                }
+            } as WhereOptions<ExpenseModel>
+        });
+        return Number(result) || 0;
+    }
+
+    /**
      * Get expenses by category for a user
      */
     async getExpensesByCategory(userId: number, categoryId: number) {
@@ -164,7 +184,7 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
      */
     async updateById(expenseId: number, data: UpdateExpenseDTO) {
         const updateData: Partial<ExpenseModel> = {};
-        
+
         if (data.category_id !== undefined) updateData.category_id = data.category_id;
         if (data.description !== undefined) updateData.description = data.description;
         if (data.amount !== undefined) updateData.amount = data.amount;
@@ -274,9 +294,26 @@ export class ExpenseRepository extends BaseRepository<ExpenseModel> {
         try {
             await this.delete({
                 where: { user_id: userId } as WhereOptions<ExpenseModel>
-            }); 
+            });
         } catch (error) {
             handleDatabaseError(error);
         }
     }
-} 
+
+    /**
+     * Find expense by category and month
+     */
+    async findByCategoryAndMonth(userId: number, categoryId: number, month: number, year: number): Promise<ExpenseModel | null> {
+        const startOfMonth = new Date(year, month - 1, 1);
+        const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+        return this.model.findOne({
+            where: {
+                user_id: userId,
+                category_id: categoryId,
+                created_at: {
+                    [Op.between]: [startOfMonth, endOfMonth]
+                }
+            }
+        });
+    }
+}

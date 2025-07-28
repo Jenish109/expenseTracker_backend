@@ -10,6 +10,7 @@ import logger from '../utils/logger';
 import { UserRepository } from '../repositories/user.repository';
 import UserMonthlyFinance from "../models/userMonthlyFinance.model";
 import { UserMonthlyFinanceRepository } from '../repositories/userMonthlyFinance.repository';
+import { BudgetRepository } from '../repositories/budget.repository';
 
 interface ExpenseFilters {
     startDate?: string;
@@ -25,7 +26,8 @@ export class ExpenseService {
     constructor(
         private expenseRepository: ExpenseRepository,
         private categoryRepository: CategoryRepository,
-        private userRepository: UserRepository // Inject UserRepository
+        private userRepository: UserRepository,
+        private budgetRepository: BudgetRepository
     ) {
         this.userMonthlyFinanceRepository = new UserMonthlyFinanceRepository();
     }
@@ -34,14 +36,14 @@ export class ExpenseService {
     /**
      * Helper to check if adding/updating an expense would exceed the user's monthly income
      */
-    private async checkMonthlyIncomeLimit(userId: number, amount: number, expenseDate: Date, excludeExpenseId?: number) {
+    private async checkMonthlyBudgetLimit(userId: number, amount: number, expenseDate: Date, excludeExpenseId?: number) {
         // Get monthly income from UserMonthlyFinance
         // Use UTC for period
         const period = new Date(Date.UTC(expenseDate.getUTCFullYear(), expenseDate.getUTCMonth(), 1, 0, 0, 0, 0));
         const monthlyFinance = await this.userMonthlyFinanceRepository.findByUserAndPeriod(userId, period);
-        const monthlyIncome = monthlyFinance?.monthly_income != null ? Number(monthlyFinance.monthly_income) : 0;
-        if (monthlyIncome === 0) {
-            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['Monthly income not set for this period']);
+        const monthlyBudget = monthlyFinance?.monthly_budget != null ? Number(monthlyFinance.monthly_budget) : 0;
+        if (monthlyBudget === 0) {
+            throw new CustomError(ERROR_CODES.AUTH.ACCESS_DENIED, ['Monthly budget not set for this period']);
         }
         // Use expense_date to determine the month and year
         const firstDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
@@ -52,10 +54,10 @@ export class ExpenseService {
             .filter(exp => !excludeExpenseId || exp.expense_id !== excludeExpenseId)
             .reduce((sum, exp) => sum + Number(exp.amount), 0);
         // Check if adding/updating this expense exceeds monthly income
-        if (totalThisMonth + Number(amount) > monthlyIncome) {
+        if (totalThisMonth + Number(amount) > monthlyBudget) {
             throw new CustomError(
                 ERROR_CODES.EXPENSE.LIMIT_EXCEEDED,
-                [excludeExpenseId ? 'Updating this expense exceeds your monthly income for the month.' : 'Adding this expense exceeds your monthly income for the month.']
+                [excludeExpenseId ? 'Updating this expense exceeds your monthly budget for the month.' : 'Adding this expense exceeds your monthly budget for the month.']
             );
         }
     }
@@ -71,8 +73,38 @@ export class ExpenseService {
                 throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
             }
 
+            // Check if budget exists for this category in current month
+            const currentMonth = new Date().getMonth() + 1;
+            const currentYear = new Date().getFullYear();
+            const budgetForCategory = await this.budgetRepository.findByCategoryAndMonth(userId, data.category_id, currentMonth, currentYear);
+            if (!budgetForCategory) {
+                throw new CustomError(ERROR_CODES.BUDGET.NO_BUDGET_FOUND, ['No budget found for this category in current month. Please create a budget first.']);
+            }
+
             // Monthly income check
-            await this.checkMonthlyIncomeLimit(userId, Number(data.amount), new Date());
+            await this.checkMonthlyBudgetLimit(userId, Number(data.amount), new Date());
+
+            //validate category is one time in month not repeat
+            const categoryInMonth = await this.expenseRepository.findByCategoryAndMonth(userId, data.category_id, new Date().getMonth() + 1, new Date().getFullYear());
+            if (categoryInMonth) {
+                throw new CustomError(ERROR_CODES.EXPENSE.CATEGORY_ALREADY_EXISTS, ['Category already exists in this month']);
+            }
+
+            // Check if expense amount is less than or equal to budget amount
+            if (budgetForCategory) {
+                const budgetAmount = Number(budgetForCategory.amount);
+                const expenseAmount = Number(data.amount);
+
+                // Get current month spending for this category
+                const currentMonthSpending = await this.expenseRepository.getCurrentMonthExpensesByCategory(userId, data.category_id);
+                const totalAfterExpense = currentMonthSpending + expenseAmount;
+
+                if (totalAfterExpense > budgetAmount) {
+                    throw new CustomError(ERROR_CODES.EXPENSE.LIMIT_EXCEEDED, [
+                        `Expense amount (${expenseAmount}) plus current month spending (${currentMonthSpending}) exceeds budget amount (${budgetAmount}). Remaining budget: ${Math.max(0, budgetAmount - currentMonthSpending)}`
+                    ]);
+                }
+            }
 
             // Create expense
             const expense = await this.expenseRepository.create({
@@ -255,6 +287,14 @@ export class ExpenseService {
                 if (!category) {
                     throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ['Invalid category']);
                 }
+
+                // Check if budget exists for this category in current month
+                const currentMonth = new Date().getMonth() + 1;
+                const currentYear = new Date().getFullYear();
+                const budgetForCategory = await this.budgetRepository.findByCategoryAndMonth(userId, data.category_id, currentMonth, currentYear);
+                if (!budgetForCategory) {
+                    throw new CustomError(ERROR_CODES.BUDGET.NO_BUDGET_FOUND, ['No budget found for this category in current month. Please create a budget first.']);
+                }
             }
 
             // Validate amount if being updated
@@ -264,7 +304,37 @@ export class ExpenseService {
             }
 
             // Monthly income check for update
-            await this.checkMonthlyIncomeLimit(userId, Number(newAmount), new Date(), expenseId);
+            await this.checkMonthlyBudgetLimit(userId, Number(newAmount), new Date(), expenseId);
+
+            //validate category is one time in month not repeat
+            if (data.category_id) {
+                const categoryInMonth = await this.expenseRepository.findByCategoryAndMonth(userId, data.category_id, new Date().getMonth() + 1, new Date().getFullYear());
+                if (categoryInMonth && categoryInMonth.expense_id !== expenseId) {
+                    throw new CustomError(ERROR_CODES.EXPENSE.CATEGORY_ALREADY_EXISTS, ['Category already exists in this month']);
+                }
+            }
+
+            // Check if expense amount is less than or equal to budget amount
+            const categoryId = data.category_id || expense.category_id;
+            const currentMonth = new Date().getMonth() + 1;
+            const currentYear = new Date().getFullYear();
+            const budgetForCategory = await this.budgetRepository.findByCategoryAndMonth(userId, categoryId, currentMonth, currentYear);
+            if (budgetForCategory) {
+                const budgetAmount = Number(budgetForCategory.amount);
+                const expenseAmount = Number(newAmount);
+                
+                // Get current month spending for this category (excluding current expense)
+                const currentMonthSpending = await this.expenseRepository.getCurrentMonthExpensesByCategory(userId, categoryId);
+                const currentExpenseAmount = expense.category_id === categoryId ? Number(expense.amount) : 0;
+                const adjustedSpending = currentMonthSpending - currentExpenseAmount;
+                const totalAfterExpense = adjustedSpending + expenseAmount;
+                
+                if (totalAfterExpense > budgetAmount) {
+                    throw new CustomError(ERROR_CODES.EXPENSE.LIMIT_EXCEEDED, [
+                        `Expense amount (${expenseAmount}) plus current month spending (${adjustedSpending}) exceeds budget amount (${budgetAmount}). Remaining budget: ${Math.max(0, budgetAmount - adjustedSpending)}`
+                    ]);
+                }
+            }
 
             // Update expense
             await this.expenseRepository.update(data, { where: { expense_id: expenseId, user_id: userId } });

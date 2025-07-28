@@ -27,7 +27,7 @@ export interface UpdateBudgetDTO {
 
 export interface BudgetWithCategory extends Budget {
     category: ExpenseCategory;
-    current_amount: number;
+    current_month_spending: number;
     remaining_amount: number;
     utilization_percentage: number;
 } 

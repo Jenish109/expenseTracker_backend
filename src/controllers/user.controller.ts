@@ -4,6 +4,13 @@ import { CustomError } from "../utils/customError";
 import { handleControllerError } from "../utils/errorHandler";
 import logger from "../utils/logger";
 import { DashboardData } from "../interfaces/dashboard.interface";
+import { 
+    ExpenseData, 
+    BudgetData, 
+    CategoryData, 
+    CategorySpendingData, 
+    RecentTransactionData 
+} from "../interfaces/user.interface";
 import { UserRepository } from "../repositories/user.repository";
 import { ExpenseRepository } from "../repositories/expense.repository";
 import { CategoryRepository } from "../repositories/category.repository";
@@ -164,33 +171,57 @@ export class UserController {
             const categories = await this.categoryRepository.findAll();
 
             // Calculate total expense
-            total_expense = expenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
+            total_expense = expenses.reduce((sum: number, expense) => sum + Number(expense.amount), 0);
 
-            // Process budget data
-            const updated_budget_list = budgetResult.data
-                .filter((budget: any) => budget.category && budget.category.category_id !== undefined)
-                .map((budget: any) => ({
-                    budget_id: budget.budget_id,
-                    category: {
-                        category_id: budget.category.category_id,
-                        category_name: budget.category.category_name,
-                        category_color: budget.category.category_color,
-                        user_id: budget.category.user_id!,
-                        is_default: budget.category.is_default,
-                        created_at: budget.category.created_at
-                    },
-                    current_amount: budget.current_amount,
-                    amount: budget.amount,
-                    remaining_amount: Math.max(0, budget.amount - budget.current_amount),
-                    utilization_percentage: budget.amount > 0 ? (budget.current_amount / budget.amount) * 100 : 0,
-                    created_at: budget.created_at,
+            // Process budget data with spending calculation based on budget's created_at month/year
+            const updated_budget_list = await Promise.all(budgetResult.data
+                .filter((budget) => budget.category && budget.category.category_id !== undefined)
+                .map(async (budget) => {
+                    // Get budget's created_at date to determine the month/year for spending calculation
+                    const budgetDate = new Date(budget.created_at);
+                    const budgetMonth = budgetDate.getMonth() + 1; // getMonth() returns 0-11, so add 1
+                    const budgetYear = budgetDate.getFullYear();
+                    
+                    // Get expenses for this category in the budget's month/year
+                    const categoryExpenses = expenses.filter((expense) => {
+                        const expenseDate = new Date(expense.created_at);
+                        return expense.category_id === budget.category.category_id &&
+                               expenseDate.getMonth() + 1 === budgetMonth &&
+                               expenseDate.getFullYear() === budgetYear;
+                    });
+                    
+                    // Calculate total spending for this category in the budget's month
+                    const categorySpending = categoryExpenses.reduce((sum: number, expense) => 
+                        sum + Number(expense.amount), 0);
+                    
+                    // Calculate remaining amount and utilization
+                    const remaining_amount = Math.max(0, Number(budget.amount) - categorySpending);
+                    const utilization_percentage = Number(budget.amount) > 0 ? 
+                        (categorySpending / Number(budget.amount)) * 100 : 0;
+
+                    return {
+                        budget_id: budget.budget_id,
+                        category: {
+                            category_id: budget.category.category_id,
+                            category_name: budget.category.category_name,
+                            category_color: budget.category.category_color,
+                            user_id: budget.category.user_id!,
+                            is_default: budget.category.is_default,
+                            created_at: budget.category.created_at
+                        },
+                        current_month_spending: categorySpending,
+                        amount: budget.amount,
+                        remaining_amount: remaining_amount,
+                        utilization_percentage: Math.round(utilization_percentage * 100) / 100, // Round to 2 decimal places
+                        created_at: budget.created_at,
+                    };
                 }));
 
             // Process category spending
-            const categorySpending = categories.map((category: any) => {
+            const categorySpending = categories.map((category) => {
                 const current_amount = expenses
-                    .filter((expense: any) => expense.category_id === category.category_id)
-                    .reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
+                    .filter((expense) => expense.category_id === category.category_id)
+                    .reduce((sum: number, expense) => sum + Number(expense.amount), 0);
 
                 return {
                     category: {
@@ -207,7 +238,7 @@ export class UserController {
             });
 
             // Process monthly spending
-            expenses.forEach((expense: any) => {
+            expenses.forEach((expense) => {
                 const date = new Date(expense.created_at);
                 const month = date.toLocaleString('default', { month: 'short' });
                 const amount = Number(expense.amount);
@@ -220,23 +251,25 @@ export class UserController {
             });
 
             // Format recent transactions
-            const recent_transactions = recentExpenses.map((expense: any) => ({
-                expense_id: expense.expense_id,
-                user_id: expense.user_id,
-                category_id: expense.category_id,
-                expense_name: expense.expense_name,
-                amount: expense.amount,
-                date: expense.date,
-                created_at: expense.created_at,
-                category: {
-                    category_id: expense.category.category_id,
-                    category_name: expense.category.category_name,
-                    category_color: expense.category.category_color,
-                    user_id: expense.category.user_id!,
-                    is_default: expense.category.is_default,
-                    created_at: expense.category.created_at
-                }
-            }));
+            const recent_transactions = recentExpenses
+                .filter((expense) => expense.category)
+                .map((expense) => ({
+                    expense_id: expense.expense_id,
+                    user_id: expense.user_id,
+                    category_id: expense.category_id,
+                    expense_name: expense.expense_name,
+                    amount: expense.amount,
+                    date: expense.expense_date,
+                    created_at: expense.created_at,
+                    category: {
+                        category_id: expense.category!.category_id,
+                        category_name: expense.category!.category_name,
+                        category_color: expense.category!.category_color,
+                        user_id: expense.category!.user_id!,
+                        is_default: expense.category!.is_default,
+                        created_at: expense.category!.created_at
+                    }
+                }));
 
             // Get monthly finance for the current month (UTC)
             const now = new Date();

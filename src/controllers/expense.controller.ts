@@ -8,6 +8,8 @@ import logger from '../utils/logger';
 import { ExpenseRepository } from '../repositories/expense.repository';
 import { CategoryRepository } from '../repositories/category.repository';
 import { UserRepository } from '../repositories/user.repository';
+import { BudgetRepository } from '../repositories/budget.repository';
+import BudgetModel from '../models/budget.model';
 
 // Extend Express Request to include user property
 declare module 'express' {
@@ -26,7 +28,8 @@ export class ExpenseController {
         const expenseRepository = new ExpenseRepository();
         const categoryRepository = new CategoryRepository();
         const userRepository = new UserRepository();
-        this.expenseService = new ExpenseService(expenseRepository, categoryRepository, userRepository);
+        const budgetRepository = new BudgetRepository(BudgetModel);
+        this.expenseService = new ExpenseService(expenseRepository, categoryRepository, userRepository, budgetRepository);
     }
 
     /**

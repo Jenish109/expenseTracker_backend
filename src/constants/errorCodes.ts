@@ -124,7 +124,12 @@ export const ERROR_CODES = {
       code: 'EXP_007',
       message: 'Expense limit exceeded',
       statusCode: 400
-    }
+    },
+    CATEGORY_ALREADY_EXISTS: {
+      code: 'EXP_008',
+      message: 'Category already exists in this month',
+      statusCode: 400
+    }   
   },
   BUDGET: {
     NOT_FOUND: {
@@ -145,6 +150,16 @@ export const ERROR_CODES = {
     LIMIT_EXCEEDED: {
       code: 'BUD_004',
       message: 'Budget limit exceeded',
+      statusCode: 400
+    },
+    CATEGORY_ALREADY_EXISTS: {
+      code: 'BUD_005',
+      message: 'Category limit exceeded',
+      statusCode: 400
+    }, 
+    NO_BUDGET_FOUND: {
+      code: 'BUD_006',
+      message: 'No budget found for this category in current month. Please create a budget first.',
       statusCode: 400
     }
   },

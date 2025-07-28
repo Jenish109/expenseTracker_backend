@@ -3,6 +3,7 @@ import { CustomError } from "../utils/customError";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { Op } from "sequelize";
 import { DashboardData } from "../interfaces/dashboard.interface";
+import { BudgetData } from "../interfaces/user.interface";
 import { UserRepository } from "../repositories/user.repository";
 import { ExpenseRepository } from "../repositories/expense.repository";
 import { BudgetRepository } from "../repositories/budget.repository";
@@ -167,7 +168,7 @@ export class UserService {
             : 0;
 
         // Process budget data with current spending
-        const budgetData = budgets.map(budget => {
+        const budgetData: BudgetData[] = budgets.map(budget => {
             if (!budget.category) {
                 throw new CustomError(ERROR_CODES.CATEGORY.NOT_FOUND, ["Category not found for budget"]);
             }
@@ -190,10 +191,11 @@ export class UserService {
                     is_default: budget.category.is_default,
                     created_at: budget.category.created_at
                 },
+                current_month_spending: currentAmount,
                 amount: Number(budget.amount),
-                current_amount: currentAmount,
                 remaining_amount: Math.max(0, Number(budget.amount) - currentAmount),
-                utilization_percentage: (currentAmount / Number(budget.amount)) * 100
+                utilization_percentage: (currentAmount / Number(budget.amount)) * 100,
+                created_at: budget.created_at
             };
         });
 
