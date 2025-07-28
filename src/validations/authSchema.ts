@@ -127,3 +127,15 @@ export const changeEmailSchema = Joi.object({
         'any.required': MESSAGES.AUTH.PASSWORD_REQUIRED
     })
 });
+
+export const googleLoginSchema = Joi.object({
+    token: Joi.string().required().messages({
+        'any.required': MESSAGES.AUTH.TOKEN_REQUIRED
+    })
+});
+
+export const facebookLoginSchema = Joi.object({
+    token: Joi.string().required().messages({
+        'any.required': MESSAGES.AUTH.TOKEN_REQUIRED
+    })
+});

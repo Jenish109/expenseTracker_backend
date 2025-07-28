@@ -190,6 +190,7 @@ export const CATEGORIES = [
 export const AUTH_PROVIDERS = {
     EMAIL: "email",
     GOOGLE: "google",
+    FACEBOOK: "facebook",
   };
 
 export type ErrorDetail = {
