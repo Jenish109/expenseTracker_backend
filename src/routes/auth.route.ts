@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { validatePayload } from '../middlewares/validation.middleware';
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema, changePasswordSchema, changeEmailSchema } from '../validations/authSchema';
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema, changePasswordSchema, changeEmailSchema, googleLoginSchema, facebookLoginSchema } from '../validations/authSchema';
 import verifyToken from '../middlewares/auth.middleware';
 
 const authRoute: Router = express.Router();
@@ -12,6 +12,8 @@ authRoute.post('/login', validatePayload(loginSchema), authController.login.bind
 authRoute.post('/refresh-token', authController.refreshToken.bind(authController));
 authRoute.post('/logout', verifyToken, authController.logout.bind(authController));
 authRoute.put('/verify-email', authController.verifyUserEmail.bind(authController));
+authRoute.post("/google-login", validatePayload(googleLoginSchema), authController.googleLogin.bind(authController));
+authRoute.post("/facebook-login", validatePayload(facebookLoginSchema), authController.facebookLogin.bind(authController));
 
 authRoute.post("/forgot-password", validatePayload(forgotPasswordSchema), authController.forgotPassword.bind(authController));
 authRoute.post(

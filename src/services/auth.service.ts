@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { CustomError } from "../utils/customError";
-import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginDTO, RegisterDTO, UpdateProfileRequest } from "../interfaces/auth.interface";
+import type { ForgotPasswordRequest, ForgotPasswordResponse, GoogleLoginRequest, GoogleLoginResponse, FacebookLoginRequest, FacebookLoginResponse, LoginDTO, RegisterDTO, UpdateProfileRequest } from "../interfaces/auth.interface";
 import { UserRepository } from "../repositories/user.repository";
 import { UserTokenRepository } from "../repositories/userToken.repository";
 import logger from "../utils/logger";
@@ -16,6 +16,7 @@ import { handleServiceError } from "../utils/errorHandler";
 import { SUCCESS_CODES } from "../constants/successCodes";
 import { PasswordResetRepository } from "../repositories/passwordReset.repository";
 import { CategoryService } from "./category.service";
+import admin from "../config/firebase";
 
 export class AuthService {
     private userRepository: UserRepository;
@@ -434,6 +435,153 @@ export class AuthService {
                 html,
             });
             return true;
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async googleLogin(params: GoogleLoginRequest): Promise<GoogleLoginResponse> {
+        try {
+            const { token, userAgent, ipAddress } = params;
+
+            // Verify Google token
+            const decodedToken = await admin.auth().verifyIdToken(token);
+            if (!decodedToken?.email) {
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, [
+                    `Invalid Google token.`
+                ]);
+            }
+
+            let user = await this.userRepository.findByEmail(decodedToken.email);
+
+            if (!user) {
+                user = await this.userRepository.create({
+                    email: decodedToken.email,
+                    first_name: decodedToken.name || decodedToken.email.split("@")[0],
+                    last_name: "",
+                    username: decodedToken.email.split("@")[0],
+                    email_verified: true,
+                    auth_provider: AUTH_PROVIDERS.GOOGLE,
+                    password: "",
+                });
+            }
+
+            // Increment login count
+            user.login_count = (user.login_count || 0) + 1;
+            await user.save();
+
+            // Generate tokens
+            const tokens = this.generateTokens({ user_id: user.user_id, email: user.email });
+
+            // Store tokens
+            await this.saveTokens(user.user_id, tokens.accessToken, tokens.refreshToken);
+
+            return {
+                user_id: user.user_id,
+                email: user.email,
+                username: user.username,
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                loginCount: user.login_count
+            };
+        } catch (error) {
+            handleServiceError(error);
+        }
+    }
+
+    async facebookLogin(params: FacebookLoginRequest): Promise<FacebookLoginResponse> {
+        try {
+            const { token, userAgent, ipAddress } = params;
+
+            // Debug: Log token type and length
+            logger.info(`Facebook login attempt with token length: ${token?.length || 0}`);
+            logger.info(`Token starts with: ${token?.substring(0, 20)}...`);
+            
+            // Verify Facebook token using Firebase Admin SDK
+            let decodedToken;
+            try {
+                decodedToken = await admin.auth().verifyIdToken(token);
+                logger.info('Firebase token verification successful');
+                logger.info('Decoded token email:', decodedToken.email);
+                logger.info('Decoded token name:', decodedToken.name);
+                logger.info('Decoded token keys:', Object.keys(decodedToken));
+            } catch (firebaseError: any ) {
+                logger.error('Firebase token verification failed:', firebaseError);
+                throw new CustomError(ERROR_CODES.AUTH.INVALID_TOKEN, [
+                    `Invalid Facebook token: ${firebaseError.message}`
+                ]);
+            }
+            
+            if (!decodedToken?.email) {
+                // Facebook might not provide email, try to use user ID or other identifier
+                logger.warn('No email found in Facebook token, using user ID as fallback');
+                const fallbackEmail = `${decodedToken.uid}@facebook.com`;
+                logger.info('Using fallback email:', fallbackEmail);
+                
+                // Check if user exists with fallback email
+                let user = await this.userRepository.findByEmail(fallbackEmail);
+                
+                if (!user) {
+                    user = await this.userRepository.create({
+                        email: fallbackEmail,
+                        first_name: decodedToken.name || 'Facebook',
+                        last_name: "User",
+                        username: decodedToken.uid,
+                        email_verified: true,
+                        auth_provider: AUTH_PROVIDERS.FACEBOOK,
+                        password: "",
+                    });
+                }
+                
+                // Continue with the rest of the logic
+                user.login_count = (user.login_count || 0) + 1;
+                await user.save();
+                
+                const tokens = this.generateTokens({ user_id: user.user_id, email: user.email });
+                await this.saveTokens(user.user_id, tokens.accessToken, tokens.refreshToken);
+                
+                return {
+                    user_id: user.user_id,
+                    email: user.email,
+                    username: user.username,
+                    accessToken: tokens.accessToken,
+                    refreshToken: tokens.refreshToken,
+                    loginCount: user.login_count
+                };
+            }
+
+            let user = await this.userRepository.findByEmail(decodedToken.email);
+
+            if (!user) {
+                user = await this.userRepository.create({
+                    email: decodedToken.email,
+                    first_name: decodedToken.name || decodedToken.email.split("@")[0],
+                    last_name: "",
+                    username: decodedToken.email.split("@")[0],
+                    email_verified: true,
+                    auth_provider: AUTH_PROVIDERS.FACEBOOK,
+                    password: "",
+                });
+            }
+
+            // Increment login count
+            user.login_count = (user.login_count || 0) + 1;
+            await user.save();
+
+            // Generate tokens
+            const tokens = this.generateTokens({ user_id: user.user_id, email: user.email });
+
+            // Store tokens
+            await this.saveTokens(user.user_id, tokens.accessToken, tokens.refreshToken);
+
+            return {
+                user_id: user.user_id,
+                email: user.email,
+                username: user.username,
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                loginCount: user.login_count
+            };
         } catch (error) {
             handleServiceError(error);
         }

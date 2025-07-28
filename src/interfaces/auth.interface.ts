@@ -69,3 +69,33 @@ export interface UpdateProfileRequest {
     lastName?: string;
     email?: string;
 }
+
+export interface GoogleLoginRequest {
+    token: string;
+    userAgent?: string;
+    ipAddress?: string;
+}
+
+export interface GoogleLoginResponse {
+    user_id: number;
+    email: string;
+    username: string;
+    accessToken: string;
+    refreshToken: string;
+    loginCount: number;
+}
+
+export interface FacebookLoginRequest {
+    token: string;
+    userAgent?: string;
+    ipAddress?: string;
+}
+
+export interface FacebookLoginResponse {
+    user_id: number;
+    email: string;
+    username: string;
+    accessToken: string;
+    refreshToken: string;
+    loginCount: number;
+}

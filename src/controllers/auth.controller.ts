@@ -225,4 +225,37 @@ export class AuthController {
             handleControllerError(res, error);
         }
     }
+
+    async googleLogin(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { token } = req.body;
+
+            const result = await this.authService.googleLogin({
+                token,
+                userAgent: req.headers["user-agent"] as string,
+                ipAddress: req.ip
+            });
+
+            return successResponse(res, result, SUCCESS_CODES.AUTH.LOGIN_SUCCESS.message, SUCCESS_CODES.AUTH.LOGIN_SUCCESS.status_code);
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
+    async facebookLogin(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { token } = req.body;
+
+            const result = await this.authService.facebookLogin({
+                token,
+                userAgent: req.headers["user-agent"] as string,
+                ipAddress: req.ip
+            });
+
+            return successResponse(res, result, SUCCESS_CODES.AUTH.LOGIN_SUCCESS.message, SUCCESS_CODES.AUTH.LOGIN_SUCCESS.status_code);
+        } catch (error) {
+            handleControllerError(res, error);
+        }
+    }
+
 }
