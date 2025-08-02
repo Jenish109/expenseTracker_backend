@@ -109,5 +109,11 @@ export const SUCCESS_CODES = {
       status_code: 200,
       message: 'Settings updated successfully.'
     }
+  },
+  CONTACT: {
+    CONTACT_CREATED: {
+      status_code: 201,
+      message: 'Contact created successfully.'
+    }
   }
 } as const; 
