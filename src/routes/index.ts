@@ -5,6 +5,7 @@ import expenseRoute from './expense.route';
 import budgetRoute from './budget.route';
 import settingsRouter from './settings.route';
 import categoryRoute from './category.route';
+import contactRoute from './contact.route';
 
 const router: Router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/expense', expenseRoute);
 router.use('/budget', budgetRoute);
 router.use('/settings', settingsRouter);
 router.use('/categories', categoryRoute);
+router.use('/contact', contactRoute);
 
 export default router;

@@ -23,6 +23,7 @@ import Expense from './expense.model';
 import Budget from './budget.model';
 import UserToken from './userToken.model';
 import UserMonthlyFinance from './userMonthlyFinance.model';
+import Contact from './contact.model';
 
 // Define associations after all models are initialized
 const initializeAssociations = () => {
@@ -60,5 +61,6 @@ export {
     Expense,
     Budget,
     UserToken,
-    UserMonthlyFinance
+    UserMonthlyFinance,
+    Contact
 }; 
