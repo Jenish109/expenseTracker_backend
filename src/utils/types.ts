@@ -1,48 +1,26 @@
-interface User {
-    id: number;
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date;
+/** Legacy shared types — prefer Zod-inferred DTOs on new routes. */
+
+export interface ExpenseData {
+  expense_id: string;
+  category_data: {
+    category_id: string;
+    category_name: string;
+  };
+  expense_name: string;
+  amount: number;
+  created_at: string;
 }
 
-interface Pool {
-    host: string,
-    user: string,
-    password: string,
-    database: string,
-    waitForConnections: boolean,
-    connectionLimit: number,
-    queueLimit: number,
+export interface DashboardData {
+  userId: string;
+  monthly_budget: number | null;
+  monthly_income: number | null;
+  monthly_expense: number | null;
+  monthly_savings: number | null;
+  recent_transactions: ExpenseData[];
+  budget_data: unknown[];
+  spending_overview: {
+    monthlySpending: Array<{ month: string; amount: number }>;
+    categorySpending: Array<{ category_id: string; category_name: string; amount: number }>;
+  };
 }
-
-interface ExpenseData {
-    expense_id: number;
-    category_data: {
-        catagory_id: number;
-        category_name: string;
-    };
-    expense_name: string;
-    amount: number;
-    created_at: Date;
-}
-
-interface DashboardData {
-    userId: number;
-    monthly_budget: number | null;
-    monthly_income: number | null;
-    monthly_expense: number | null;
-    monthly_savings: number | null;
-    recent_transactions: [],
-    budget_data: [],
-    spending_overview: {
-        monthlySpending: Array<{ month: string; amount: number; }>,
-        categorySpending: Array<{ catagory_id: number, catagory_name: string, amount: number }>,
-    }
-}
-
-
-export { User, Pool, ExpenseData, DashboardData };
